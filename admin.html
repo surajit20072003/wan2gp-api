@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wan2GP Admin - Job Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 28px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        select,
+        input[type="text"] {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-queued {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .status-running {
+            background: #2196F3;
+            color: white;
+        }
+
+        .status-completed {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-error,
+        .status-failed {
+            background: #f44336;
+            color: white;
+        }
+
+        .job-id {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Wan2GP Admin - Job Manager</h1>
+            <div class="nav">
+                <a href="/dashboard">📊 Dashboard</a>
+                <a href="/docs">📖 API Docs</a>
+                <a href="/admin">🔄 Refresh</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalJobs">-</div>
+                    <div class="stat-label">Total Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="queuedJobs">-</div>
+                    <div class="stat-label">Queued</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="runningJobs">-</div>
+                    <div class="stat-label">Running</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="completedJobs">-</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="errorJobs">-</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            </div>
+
+            <div class="filters">
+                <select id="statusFilter" onchange="filterJobs()">
+                    <option value="">All Statuses</option>
+                    <option value="queued">Queued</option>
+                    <option value="running">Running</option>
+                    <option value="completed">Completed</option>
+                    <option value="error">Error/Failed</option>
+                </select>
+                <input type="text" id="searchBox" placeholder="Search by job ID or prompt..." onkeyup="filterJobs()">
+                <button class="btn" onclick="loadJobs()">🔄 Refresh</button>
+                <button class="btn" onclick="autoRefresh()">⏱️ Auto-Refresh (10s)</button>
+            </div>
+
+            <table id="jobsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Job ID</th>
+                        <th>Status</th>
+                        <th>Prompt</th>
+                        <th>Created</th>
+                        <th>Client IP</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="jobsBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let allJobs = [];
+        let autoRefreshInterval = null;
+
+        async function loadJobs() {
+            try {
+                const response = await fetch('/jobs/list?limit=200');
+                const data = await response.json();
+                allJobs = data.jobs || [];
+
+                updateStats();
+                filterJobs();
+            } catch (err) {
+                document.getElementById('jobsBody').innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; color: red;">Error loading jobs: ${err.message}</td></tr>
+                `;
+            }
+        }
+
+        function updateStats() {
+            const stats = allJobs.reduce((acc, job) => {
+                acc.total++;
+                if (job.status === 'queued') acc.queued++;
+                else if (job.status === 'running') acc.running++;
+                else if (job.status === 'completed') acc.completed++;
+                else if (job.status === 'error' || job.status === 'failed') acc.error++;
+                return acc;
+            }, { total: 0, queued: 0, running: 0, completed: 0, error: 0 });
+
+            document.getElementById('totalJobs').textContent = stats.total;
+            document.getElementById('queuedJobs').textContent = stats.queued;
+            document.getElementById('runningJobs').textContent = stats.running;
+            document.getElementById('completedJobs').textContent = stats.completed;
+            document.getElementById('errorJobs').textContent = stats.error;
+        }
+
+        function filterJobs() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const searchText = document.getElementById('searchBox').value.toLowerCase();
+
+            let filtered = allJobs.filter(job => {
+                const matchesStatus = !statusFilter || job.status === statusFilter ||
+                    (statusFilter === 'error' && (job.status === 'error' || job.status === 'failed'));
+                const matchesSearch = !searchText ||
+                    job.job_id.toLowerCase().includes(searchText) ||
+                    job.prompt.toLowerCase().includes(searchText);
+                return matchesStatus && matchesSearch;
+            });
+
+            displayJobs(filtered);
+        }
+
+        function displayJobs(jobs) {
+            const tbody = document.getElementById('jobsBody');
+
+            if (jobs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No jobs found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = jobs.map((job, idx) => {
+                const createdDate = new Date(parseFloat(job.created_at) * 1000);
+                const timeStr = createdDate.toLocaleString();
+
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td class="job-id">${job.job_id}</td>
+                        <td><span class="status-badge status-${job.status}">${job.status.toUpperCase()}</span></td>
+                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${job.prompt}</td>
+                        <td style="font-size: 12px;">${timeStr}</td>
+                        <td>${job.client_ip || '-'}</td>
+                        <td>
+                            ${job.status === 'completed' ?
+                        `<a href="/download/${job.job_id}" download="${job.job_id}.mp4" class="btn btn-small">⬇️ Download</a>` :
+                        job.status === 'error' || job.status === 'failed' ?
+                            `<button class="btn btn-small" onclick="retryJob('${job.job_id}')">🔄 Retry</button>` :
+                            '-'
+                    }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function retryJob(jobId) {
+            if (!confirm(`Retry job ${jobId}?`)) return;
+
+            try {
+                const response = await fetch(`/retry/${jobId}`, { method: 'POST' });
+                const data = await response.json();
+                alert(`Job ${jobId} resubmitted!`);
+                loadJobs();
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        function autoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                alert('Auto-refresh disabled');
+            } else {
+                autoRefreshInterval = setInterval(loadJobs, 10000);
+                alert('Auto-refresh enabled (every 10 seconds)');
+                loadJobs();
+            }
+        }
+
+        // Load jobs on page load
+        loadJobs();
+    </script>
+</body>
+
+</html>

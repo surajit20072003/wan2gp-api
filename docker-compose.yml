@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: wan2gp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api-server:
+    build: .
+    container_name: wan2gp-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - /nvme0n1-disk/test_wan2gp/outputs:/workspace/outputs:ro
+      - /nvme0n1-disk/test_wan2gp/settings:/workspace/settings
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - WAN2GP_OUTPUTS_DIR=/workspace/outputs
+      - WAN2GP_SETTINGS_DIR=/workspace/settings
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - wan2gp-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  celery-worker:
+    build: .
+    container_name: wan2gp-celery
+    volumes:
+      - /nvme0n1-disk/test_wan2gp/outputs:/workspace/outputs:ro
+      - /nvme0n1-disk/test_wan2gp/settings:/workspace/settings
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - WAN2GP_OUTPUTS_DIR=/workspace/outputs
+      - WAN2GP_SETTINGS_DIR=/workspace/settings
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=info --concurrency=1
+    networks:
+      - wan2gp-network
+    healthcheck:
+      test: [ "CMD-SHELL", "celery -A celery_app inspect ping | grep -q 'OK'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  wan2gp-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local

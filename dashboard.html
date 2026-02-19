@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wan2GP Video Generation Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .file-input-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .file-input-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .file-input-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            margin-left: 15px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .video-prompts {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .prompt-card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prompt-id {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .duration-badge {
+            background: #ffc107;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .prompt-text {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-section {
+            margin-top: 20px;
+        }
+
+        .job-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .job-info {
+            flex: 1;
+        }
+
+        .job-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .job-status {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-queued {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .status-running {
+            background: #2196F3;
+            color: white;
+        }
+
+        .status-completed {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-error {
+            background: #f44336;
+            color: white;
+        }
+
+        .api-config {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Wan2GP Video Generation Dashboard</h1>
+            <p>Process presentation.json and generate videos via API</p>
+        </header>
+
+        <div class="content">
+            <!-- Model Selection Tabs -->
+            <div class="section" style="margin-bottom: 20px; padding: 15px;">
+                <div class="model-tabs" style="display: flex; gap: 10px;">
+                    <button class="btn" id="modelTabLTX2" onclick="switchModel('ltx2')"
+                        style="flex: 1; background: #667eea;">LTX-2 (Standard)</button>
+                    <button class="btn" id="modelTabHunyuan" onclick="switchModel('hunyuan')"
+                        style="flex: 1; background: #ccc; color: #333;">Hunyuan 1.5 (New)</button>
+                </div>
+            </div>
+
+            <!-- Step 1: Input Source -->
+            <div class="section">
+                <h2>📁 Step 1: Choose Source</h2>
+
+                <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn" id="tabFile" onclick="switchTab('file')"
+                        style="flex: 1; background: #667eea;">Upload File</button>
+                    <button class="btn" id="tabManual" onclick="switchTab('manual')"
+                        style="flex: 1; background: #ccc; color: #333;">Manual Prompt</button>
+                </div>
+
+                <!-- Option A: File Upload -->
+                <div id="fileUploadSection">
+                    <div class="file-input-container">
+                        <label for="fileInput" class="file-input-btn">
+                            Choose presentation.json
+                        </label>
+                        <input type="file" id="fileInput" accept=".json">
+                        <span class="file-name" id="fileName">No file selected</span>
+                    </div>
+
+                    <div class="stats" id="stats" style="display: none;">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalSections">0</div>
+                            <div class="stat-label">Total Sections</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="videoSections">0</div>
+                            <div class="stat-label">Video Renderer Sections</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalPrompts">0</div>
+                            <div class="stat-label">Video Prompts</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option B: Manual Input -->
+                <div id="manualInputSection" style="display: none;">
+                    <label for="manualPromptText">Enter Video Prompt:</label>
+                    <textarea id="manualPromptText" rows="6"
+                        style="width: 100%; padding: 15px; border: 2px solid #e9ecef; border-radius: 6px; font-size: 14px; margin-bottom: 15px; resize: vertical;"
+                        placeholder="Describe the video you want significantly... e.g. A cinematic drone shot of a futuristic cyberpunk city with neon lights and flying cars, 8k resolution, highly detailed"></textarea>
+
+                    <button class="btn" onclick="processManualPrompt()">Set Manual Prompt</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Configure API & Video Settings -->
+            <div class="section" id="configSection" style="display: none;">
+                <h2>⚙️ Step 2: Configuration</h2>
+
+                <!-- API Config -->
+                <div class="api-config">
+                    <div>
+                        <label for="apiUrl">API URL</label>
+                        <input type="text" id="apiUrl" value="http://69.30.250.80:8000"
+                            placeholder="http://69.30.250.80:8000">
+                    </div>
+                    <button class="btn" onclick="testAPI()">Test Connection</button>
+                </div>
+                <div id="apiStatus" style="margin-top: 10px;"></div>
+
+                <!-- Settings JSON Upload (Global) -->
+                <div
+                    style="margin-top: 20px; padding: 15px; background: #eef2ff; border-radius: 8px; border: 1px dashed #667eea;">
+                    <label style="margin-bottom: 10px; color: #4338ca;">🚀 Fast Config: Load Settings JSON</label>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <label for="settingsJsonInput" class="btn"
+                            style="padding: 8px 16px; font-size: 14px; background: #4338ca;">
+                            📁 Load settings.json
+                        </label>
+                        <input type="file" id="settingsJsonInput" accept=".json" onchange="loadSettingsJson(this)">
+                        <span id="settingsStatus" style="font-size: 12px; color: #666;">No settings loaded</span>
+                    </div>
+                </div>
+
+                <!-- Video Settings -->
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+                    <h3 style="color: #667eea; margin-bottom: 20px;">🎬 Video Generation Settings</h3>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Resolution -->
+                        <div>
+                            <label for="resolution">Resolution</label>
+                            <select id="resolution"
+                                style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 6px; font-size: 14px;">
+                                <option value="1280x720">720p (1280x720)</option>
+                                <option value="1920x1080">1080p (1920x1080)</option>
+                                <option value="768x768">Square (768x768)</option>
+                                <option value="512x512">Small Square (512x512)</option>
+                            </select>
+                        </div>
+
+                        <!-- Steps Slider -->
+                        <div>
+                            <label for="steps">Inference Steps: <span id="stepsValue">8</span></label>
+                            <input type="range" id="steps" min="1" max="50" value="8"
+                                style="width: 100%; accent-color: #667eea;"
+                                oninput="document.getElementById('stepsValue').textContent = this.value">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 5px;">
+                                <span id="stepsMinLabel">1</span>
+                                <span id="stepsMaxLabel">50</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hunyuan Specific Settings -->
+                    <div id="hunyuanSettings"
+                        style="display: none; margin-top: 20px; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label for="flowShift">Flow Shift: <span id="flowShiftValue">8.0</span></label>
+                            <input type="range" id="flowShift" min="1" max="20" value="8" step="0.5"
+                                style="width: 100%; accent-color: #667eea;"
+                                oninput="document.getElementById('flowShiftValue').textContent = this.value">
+                        </div>
+                        <div>
+                            <label for="guidanceScale">Guidance Scale: <span id="guidanceScaleValue">1.0</span></label>
+                            <input type="range" id="guidanceScale" min="1" max="10" value="1" step="0.5"
+                                style="width: 100%; accent-color: #667eea;"
+                                oninput="document.getElementById('guidanceScaleValue').textContent = this.value">
+                        </div>
+                    </div>
+
+                    <!-- Duration Override -->
+                    <div style="margin-top: 20px;">
+                        <label>
+                            <input type="checkbox" id="overrideDuration" onchange="toggleDurationOverride()">
+                            Override duration for all videos
+                        </label>
+                        <div id="durationSliderContainer" style="display: none; margin-top: 10px;">
+                            <label for="durationSlider">Video Duration: <span id="durationValue">15</span>s (<span
+                                    id="framesValue">361</span> frames)</label>
+                            <input type="range" id="durationSlider" min="5" max="30" value="15" step="5"
+                                style="width: 100%; accent-color: #667eea;" oninput="updateDurationDisplay()">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 5px;">
+                                <span>5s (81 frames)</span>
+                                <span>15s (361 frames)</span>
+                                <span>30s (720 frames)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Video Prompts -->
+            <div class="section" id="promptsSection" style="display: none;">
+                <h2>🎥 Step 3: Video Prompts</h2>
+                <div class="video-prompts" id="promptsList"></div>
+            </div>
+
+            <!-- Step 4: Generate Videos -->
+            <div class="section" id="generateSection" style="display: none;">
+                <h2>🚀 Step 4: Generate Videos</h2>
+                <button class="btn" id="generateBtn" onclick="generateAllVideos()">
+                    Generate All Videos
+                </button>
+
+                <div class="progress-section" id="progressSection" style="display: none;">
+                    <h3 style="margin-bottom: 15px; color: #667eea;">Generation Progress</h3>
+                    <div id="jobsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let presentationData = null;
+        let videoPrompts = [];
+        let jobs = [];
+        let apiBase = '';
+        let currentModel = 'ltx2';
+        let settingsOverride = null;
+
+        // Default Model Configs
+        const configs = {
+            ltx2: {
+                stepsMin: 8,
+                stepsMax: 20,
+                stepsDefault: 8,
+                resDefault: '1280x720'
+            },
+            hunyuan: {
+                stepsMin: 4,
+                stepsMax: 50,
+                stepsDefault: 8,
+                resDefault: '832x480'
+            }
+        };
+
+        function switchModel(model) {
+            currentModel = model;
+            const btnLTX2 = document.getElementById('modelTabLTX2');
+            const btnHunyuan = document.getElementById('modelTabHunyuan');
+            const hunyuanSettings = document.getElementById('hunyuanSettings');
+
+            if (model === 'hunyuan') {
+                btnHunyuan.style.background = '#667eea';
+                btnHunyuan.style.color = 'white';
+                btnLTX2.style.background = '#ccc';
+                btnLTX2.style.color = '#333';
+                hunyuanSettings.style.display = 'grid';
+
+                // Update slider limits
+                document.getElementById('steps').min = configs.hunyuan.stepsMin;
+                document.getElementById('steps').max = configs.hunyuan.stepsMax;
+                document.getElementById('steps').value = configs.hunyuan.stepsDefault;
+                document.getElementById('stepsMinLabel').textContent = configs.hunyuan.stepsMin;
+                document.getElementById('stepsMaxLabel').textContent = configs.hunyuan.stepsMax;
+                document.getElementById('resolution').value = configs.hunyuan.resDefault;
+            } else {
+                btnLTX2.style.background = '#667eea';
+                btnLTX2.style.color = 'white';
+                btnHunyuan.style.background = '#ccc';
+                btnHunyuan.style.color = '#333';
+                hunyuanSettings.style.display = 'none';
+
+                // Update slider limits
+                document.getElementById('steps').min = configs.ltx2.stepsMin;
+                document.getElementById('steps').max = configs.ltx2.stepsMax;
+                document.getElementById('steps').value = configs.ltx2.stepsDefault;
+                document.getElementById('stepsMinLabel').textContent = configs.ltx2.stepsMin;
+                document.getElementById('stepsMaxLabel').textContent = configs.ltx2.stepsMax;
+                document.getElementById('resolution').value = configs.ltx2.resDefault;
+            }
+            document.getElementById('stepsValue').textContent = document.getElementById('steps').value;
+        }
+
+        function loadSettingsJson(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    settingsOverride = data;
+
+                    // Update UI if fields exist
+                    if (data.num_inference_steps) {
+                        document.getElementById('steps').value = data.num_inference_steps;
+                        document.getElementById('stepsValue').textContent = data.num_inference_steps;
+                    }
+                    if (data.resolution) {
+                        // Check if resolution exists in dropdown, if not add it
+                        const resSelect = document.getElementById('resolution');
+                        let exists = false;
+                        for (let i = 0; i < resSelect.options.length; i++) {
+                            if (resSelect.options[i].value === data.resolution) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            const opt = document.createElement('option');
+                            opt.value = data.resolution;
+                            opt.text = `Custom (${data.resolution})`;
+                            resSelect.add(opt);
+                        }
+                        resSelect.value = data.resolution;
+                    }
+                    if (data.flow_shift) {
+                        document.getElementById('flowShift').value = data.flow_shift;
+                        document.getElementById('flowShiftValue').textContent = data.flow_shift;
+                    }
+                    if (data.guidance_scale) {
+                        document.getElementById('guidanceScale').value = data.guidance_scale;
+                        document.getElementById('guidanceScaleValue').textContent = data.guidance_scale;
+                    }
+
+                    // Auto-switch to appropriate model tab if possible
+                    if (data.base_model_type && data.base_model_type.includes('hunyuan')) {
+                        switchModel('hunyuan');
+                    }
+
+                    document.getElementById('settingsStatus').innerHTML = `✅ <b>${file.name}</b> loaded successfully!`;
+                    document.getElementById('settingsStatus').style.color = '#155724';
+                } catch (err) {
+                    document.getElementById('settingsStatus').textContent = '❌ Error parsing JSON settings';
+                    document.getElementById('settingsStatus').style.color = '#721c24';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // File input handler for presentation.json
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').textContent = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    presentationData = JSON.parse(e.target.result);
+                    processPresentation();
+                } catch (err) {
+                    alert('Error parsing JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function processPresentation() {
+            if (!presentationData || !presentationData.sections) {
+                alert('Invalid presentation format');
+                return;
+            }
+
+            const sections = presentationData.sections;
+            const videoSections = sections.filter(s => s.renderer === 'video');
+
+            // Extract all video prompts
+            videoPrompts = [];
+            videoSections.forEach(section => {
+                if (section.video_prompts) {
+                    section.video_prompts.forEach(vp => {
+                        // Parse the prompt field (it might be a string or object)
+                        let promptText = '';
+                        let duration = vp.duration_hint || 15;
+
+                        try {
+                            // Try to parse if it's a JSON string
+                            const cleanPrompt = vp.prompt.trim();
+                            if (cleanPrompt.startsWith('{')) {
+                                const parsed = eval('(' + cleanPrompt + ')');
+                                promptText = parsed.video_prompt || vp.prompt;
+                            } else {
+                                promptText = vp.prompt;
+                            }
+                        } catch {
+                            promptText = vp.prompt;
+                        }
+
+                        videoPrompts.push({
+                            beat_id: vp.beat_id,
+                            segment_id: vp.segment_id,
+                            prompt: promptText,
+                            duration_hint: duration,
+                            section_id: section.section_id,
+                            section_title: section.title
+                        });
+                    });
+                }
+            });
+
+            // Update stats
+            document.getElementById('totalSections').textContent = sections.length;
+            document.getElementById('videoSections').textContent = videoSections.length;
+            document.getElementById('totalPrompts').textContent = videoPrompts.length;
+            document.getElementById('stats').style.display = 'grid';
+
+            // Show config section
+            document.getElementById('configSection').style.display = 'block';
+
+            // Display prompts
+            displayPrompts();
+            document.getElementById('promptsSection').style.display = 'block';
+            document.getElementById('generateSection').style.display = 'block';
+        }
+
+        function displayPrompts() {
+            const container = document.getElementById('promptsList');
+            container.innerHTML = videoPrompts.map((vp, index) => `
+                <div class="prompt-card">
+                    <div class="prompt-header">
+                        <div class="prompt-id">${index + 1}. ${vp.beat_id}</div>
+                        <div class="duration-badge">${vp.duration_hint}s (~${calculateFrames(vp.duration_hint)} frames)</div>
+                    </div>
+                    <div class="prompt-text">${vp.prompt.substring(0, 200)}...</div>
+                </div>
+            `).join('');
+        }
+
+        function convertFramesToSeconds(hint) {
+            return hint;
+        }
+
+        function toggleDurationOverride() {
+            const container = document.getElementById('durationSliderContainer');
+            const checkbox = document.getElementById('overrideDuration');
+            container.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function updateDurationDisplay() {
+            const duration = parseInt(document.getElementById('durationSlider').value);
+            const frames = calculateFrames(duration);
+            document.getElementById('durationValue').textContent = duration;
+            document.getElementById('framesValue').textContent = frames;
+        }
+
+        async function testAPI() {
+            apiBase = document.getElementById('apiUrl').value;
+            const statusDiv = document.getElementById('apiStatus');
+
+            statusDiv.innerHTML = '<p>Testing connection...</p>';
+
+            try {
+                const response = await fetch(`${apiBase}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.api === 'healthy') {
+                    statusDiv.innerHTML = `
+                        <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px;">
+                            <strong>✅ API Connected!</strong><br>
+                            <small>Redis: ${data.redis} | Celery: ${data.celery} | Wan2GP: ${data.wan2gp_container}</small>
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 6px;">
+                            <strong>⚠️ API reachable but some services unhealthy</strong><br>
+                            <small>${JSON.stringify(data)}</small>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('API Test Error:', err);
+                statusDiv.innerHTML = `
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 6px;">
+                        <strong>❌ Connection failed: ${err.message}</strong><br>
+                        <small>Make sure the server is accessible and CORS is enabled. Try accessing <a href="${apiBase}/docs" target="_blank">${apiBase}/docs</a> directly.</small>
+                    </div>
+                `;
+            }
+        }
+
+        async function generateAllVideos() {
+            if (!apiBase) {
+                alert('Please test API connection first!');
+                return;
+            }
+
+            if (videoPrompts.length === 0) {
+                alert('No video prompts found!');
+                return;
+            }
+
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('progressSection').style.display = 'block';
+
+            jobs = [];
+
+            for (let i = 0; i < videoPrompts.length; i++) {
+                const vp = videoPrompts[i];
+                await submitJob(vp, i);
+                await sleep(1000); // 1s delay between submissions
+            }
+
+            // Start polling
+            pollJobs();
+        }
+
+        async function submitJob(vp, index) {
+            // Get basics from UI
+            const resolution = document.getElementById('resolution').value;
+            const steps = parseInt(document.getElementById('steps').value);
+            const overrideDuration = document.getElementById('overrideDuration').checked;
+
+            let duration;
+            if (overrideDuration) {
+                duration = parseInt(document.getElementById('durationSlider').value);
+            } else {
+                duration = vp.duration_hint;
+            }
+
+            const frames = calculateFrames(duration);
+
+            // Prepare payload
+            const payload = {
+                prompt: vp.prompt,
+                resolution: resolution,
+                video_length: frames,
+                seed: -1,
+                steps: steps
+            };
+
+            // Apply Settings Override if available
+            if (settingsOverride) {
+                payload.settings_override = JSON.parse(JSON.stringify(settingsOverride));
+                // Ensure the prompt and duration from the loop beats are preserved
+                payload.settings_override.prompt = vp.prompt;
+                payload.settings_override.video_length = frames;
+                payload.settings_override.resolution = resolution;
+                payload.settings_override.num_inference_steps = steps;
+
+                // If Hunyuan tab is active, also grab manual slider overrides for Flow Shift and Guidance
+                if (currentModel === 'hunyuan') {
+                    payload.settings_override.flow_shift = parseFloat(document.getElementById('flowShift').value);
+                    payload.settings_override.guidance_scale = parseFloat(document.getElementById('guidanceScale').value);
+                }
+            } else if (currentModel === 'ltx2') {
+                // Default LTX-2 loras if no override
+                payload.loras = {
+                    "ltx-2-19b-ic-lora-detailer.safetensors": 0.9,
+                    "ltx-2-19b-lora-camera-control-static.safetensors": 0.6
+                };
+            }
+
+            try {
+                const response = await fetch(`${apiBase}/generate`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(`HTTP ${response.status}: ${errData.detail || 'Unknown error'}`);
+                }
+
+                const data = await response.json();
+
+                jobs.push({
+                    index: index,
+                    beat_id: vp.beat_id,
+                    job_id: data.job_id,
+                    status: data.status,
+                    prompt: vp.prompt.substring(0, 100),
+                    resolution: resolution,
+                    steps: steps,
+                    duration: duration
+                });
+
+                updateJobsDisplay();
+            } catch (err) {
+                console.error('Job submission failed:', err);
+                jobs.push({
+                    index: index,
+                    beat_id: vp.beat_id,
+                    job_id: 'ERROR',
+                    status: 'error',
+                    prompt: err.message
+                });
+                updateJobsDisplay();
+            }
+        }
+
+        function calculateFrames(durationSeconds) {
+            // ~24 fps for LTX-2 or Hunyuan
+            if (durationSeconds <= 5) return 81;
+            if (durationSeconds <= 10) return 161;
+            if (durationSeconds <= 15) return 361;
+            if (durationSeconds <= 20) return 481;
+            if (durationSeconds <= 25) return 601;
+            if (durationSeconds <= 30) return 721;
+            // Larger values (for long presentations)
+            return Math.ceil(durationSeconds * 24 / 8) * 8 + 1;
+        }
+
+        function updateJobsDisplay() {
+            const container = document.getElementById('jobsList');
+            container.innerHTML = jobs.map((job, idx) => `
+                <div class="job-item">
+                    <div class="job-info">
+                        <div class="job-title">${idx + 1}. ${job.beat_id}</div>
+                        <div class="job-status">Job ID: ${job.job_id}</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span class="status-badge status-${job.status}">${job.status.toUpperCase()}</span>
+                        ${job.status === 'completed' ? `
+                            <a href="${apiBase}/download/${job.job_id}" 
+                               download="${job.job_id}.mp4"
+                               class="btn" 
+                               style="padding: 8px 16px; font-size: 14px; text-decoration: none;">
+                                ⬇️ Download
+                            </a>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        let pollInterval = null;
+        async function pollJobs() {
+            if (pollInterval) clearInterval(pollInterval);
+
+            pollInterval = setInterval(async () => {
+                let allDone = true;
+
+                for (let job of jobs) {
+                    if (job.status === 'queued' || job.status === 'running') {
+                        allDone = false;
+
+                        try {
+                            const response = await fetch(`${apiBase}/status/${job.job_id}`);
+                            const data = await response.json();
+                            job.status = data.status;
+                        } catch (err) {
+                            console.error('Status check failed:', err);
+                        }
+                    }
+                }
+
+                updateJobsDisplay();
+
+                if (allDone) {
+                    clearInterval(pollInterval);
+                    document.getElementById('generateBtn').disabled = false;
+                    alert(`All videos generated! ${jobs.filter(j => j.status === 'completed').length} completed, ${jobs.filter(j => j.status === 'error').length} errors.`);
+                }
+            }, 10000); // Poll every 10 seconds
+        }
+
+        function switchTab(mode) {
+            const btnFile = document.getElementById('tabFile');
+            const btnManual = document.getElementById('tabManual');
+            const sectionFile = document.getElementById('fileUploadSection');
+            const sectionManual = document.getElementById('manualInputSection');
+
+            if (mode === 'file') {
+                btnFile.style.background = '#667eea';
+                btnFile.style.color = 'white';
+                btnManual.style.background = '#ccc';
+                btnManual.style.color = '#333';
+                sectionFile.style.display = 'block';
+                sectionManual.style.display = 'none';
+            } else {
+                btnFile.style.background = '#ccc';
+                btnFile.style.color = '#333';
+                btnManual.style.background = '#667eea';
+                btnManual.style.color = 'white';
+                sectionFile.style.display = 'none';
+                sectionManual.style.display = 'block';
+            }
+        }
+
+        function processManualPrompt() {
+            const promptText = document.getElementById('manualPromptText').value.trim();
+            if (!promptText) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            // Create a single manual job
+            videoPrompts = [{
+                beat_id: "manual_job_" + Date.now().toString().slice(-4),
+                segment_id: "manual",
+                prompt: promptText,
+                duration_hint: 15, // Default 15s, can be overridden by slider
+                section_id: "manual",
+                section_title: "Manual Prompt"
+            }];
+
+            // Update stats
+            document.getElementById('totalSections').textContent = 1;
+            document.getElementById('videoSections').textContent = 1;
+            document.getElementById('totalPrompts').textContent = 1;
+            document.getElementById('stats').style.display = 'grid';
+
+            // Show config section
+            document.getElementById('configSection').style.display = 'block';
+
+            // Display prompts
+            displayPrompts();
+            document.getElementById('promptsSection').style.display = 'block';
+            document.getElementById('generateSection').style.display = 'block';
+
+            // Scroll to config
+            document.getElementById('configSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+
+</html>
