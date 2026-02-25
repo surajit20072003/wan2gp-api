@@ -1,0 +1,162 @@
+version: '3.8'
+
+# Wan2GP Multi-GPU Video Generation Stack
+# 3 GPU containers + 1 API server + 1 Redis
+
+networks:
+  wan2gp_network:
+    driver: bridge
+
+volumes:
+  redis-data:
+
+services:
+  # ── Redis ──────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: wan2gp-redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - wan2gp_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── API Server ─────────────────────────────────────────────────────
+  api-server:
+    build: .
+    container_name: wan2gp-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      # GPU 0 container config
+      - WAN2GP_CONTAINER_0=wan2gp-gpu0
+      - WAN2GP_OUTPUTS_DIR_0=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR_0=/nvme0n1-disk/wan2gp_data/gpu0/settings
+      # GPU 1 container config
+      - WAN2GP_CONTAINER_1=wan2gp-gpu1
+      - WAN2GP_OUTPUTS_DIR_1=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR_1=/nvme0n1-disk/wan2gp_data/gpu1/settings
+      # GPU 2 container config
+      - WAN2GP_CONTAINER_2=wan2gp-gpu2
+      - WAN2GP_OUTPUTS_DIR_2=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR_2=/nvme0n1-disk/wan2gp_data/gpu2/settings
+    volumes:
+      # Docker socket for docker exec into GPU containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared data dirs (to read outputs and write settings)
+      - /nvme0n1-disk/wan2gp_data/outputs:/nvme0n1-disk/wan2gp_data/outputs
+      - /nvme0n1-disk/wan2gp_data/gpu0/settings:/nvme0n1-disk/wan2gp_data/gpu0/settings
+
+      - /nvme0n1-disk/wan2gp_data/gpu1/settings:/nvme0n1-disk/wan2gp_data/gpu1/settings
+
+      - /nvme0n1-disk/wan2gp_data/gpu2/settings:/nvme0n1-disk/wan2gp_data/gpu2/settings
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - wan2gp_network
+    command: >
+      uvicorn api_server:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 15s
+
+  # ── GPU Containers ───────────────────────────────────────────────
+  # Each container stays idle (tail -f /dev/null) and accepts docker exec
+  # calls from the API server to run wgp.py --process for headless generation.
+  # IMPORTANT: entrypoint must be overridden because the image's default
+  # entrypoint.sh runs "python3 wgp.py --listen" which starts the Gradio UI.
+
+  # GPU 0
+  wan2gp-gpu0:
+    image: deepbeepmeep/wan2gp
+    container_name: wan2gp-gpu0
+    restart: always
+    runtime: nvidia
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    shm_size: '8g'
+    volumes:
+      - /nvme0n1-disk/nvme01/Wan2GP:/workspace
+      - /nvme0n1-disk/wan2gp_data/outputs:/workspace/outputs
+      - /nvme0n1-disk/wan2gp_data/gpu0/settings:/workspace/settings
+    networks:
+      - wan2gp_network
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["tail -f /dev/null"]
+
+  # GPU 1
+  wan2gp-gpu1:
+    image: deepbeepmeep/wan2gp
+    container_name: wan2gp-gpu1
+    restart: always
+    runtime: nvidia
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+    shm_size: '8g'
+    volumes:
+      - /nvme0n1-disk/nvme01/Wan2GP:/workspace
+      - /nvme0n1-disk/wan2gp_data/outputs:/workspace/outputs
+      - /nvme0n1-disk/wan2gp_data/gpu1/settings:/workspace/settings
+    networks:
+      - wan2gp_network
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["tail -f /dev/null"]
+
+  # GPU 2
+  wan2gp-gpu2:
+    image: deepbeepmeep/wan2gp
+    container_name: wan2gp-gpu2
+    restart: always
+    runtime: nvidia
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['2']
+              capabilities: [gpu]
+    shm_size: '8g'
+    volumes:
+      - /nvme0n1-disk/nvme01/Wan2GP:/workspace
+      - /nvme0n1-disk/wan2gp_data/outputs:/workspace/outputs
+      - /nvme0n1-disk/wan2gp_data/gpu2/settings:/workspace/settings
+    networks:
+      - wan2gp_network
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["tail -f /dev/null"]

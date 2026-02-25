@@ -1,21 +1,27 @@
 """
-Wan2GP Client for server-side Docker execution.
-No SSH required - runs directly on the same host as wan2gp container.
+Wan2GP Client for multi-container Docker execution.
+Supports 3 GPU containers (wan2gp-gpu0, wan2gp-gpu1, wan2gp-gpu2).
+Each container has its own settings and outputs directories.
 """
 import subprocess
 import json
-import uuid
 import os
+import tempfile
+import glob
 from pathlib import Path
 from typing import Dict, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Wan2GPClient:
-    """Client for submitting jobs to the wan2gp Docker container."""
-    
-    DOCKER_CONTAINER = "wan2gp"
-    SETTINGS_DIR = os.getenv("WAN2GP_SETTINGS_DIR", "/workspace/settings")
-    OUTPUTS_DIR = os.getenv("WAN2GP_OUTPUTS_DIR", "/workspace/outputs")
-    
+    """Client for submitting jobs to wan2gp Docker containers."""
+
+    # Default directories (overridden per-GPU by scheduler)
+    DEFAULT_SETTINGS_DIR = "/nvme0n1-disk/wan2gp_data/gpu0/settings"
+    DEFAULT_OUTPUTS_DIR = "/nvme0n1-disk/wan2gp_data/gpu0/outputs"
+
     def __init__(self, template_path: Optional[str] = None):
         """Initialize client with settings template."""
         if template_path and Path(template_path).exists():
@@ -23,12 +29,12 @@ class Wan2GPClient:
                 self.template = json.load(f)
         else:
             self.template = self._get_default_template()
-    
+
     def _get_default_template(self) -> Dict:
         """Default settings for LTX-2 Distilled 19B."""
         return {
             "type": "WanGP v10.70 by DeepBeepMeep - LTX-2 Distilled 19B",
-            "settings_version":2.49,
+            "settings_version": 2.49,
             "base_model_type": "ltx2_19B",
             "model_type": "ltx2_distilled",
             "model_filename": "https://huggingface.co/DeepBeepMeep/LTX-2/resolve/main/ltx-2-19b-distilled-fp8_diffusion_model.safetensors",
@@ -36,7 +42,7 @@ class Wan2GPClient:
             "prompt": "",
             "alt_prompt": "",
             "resolution": "1280x720",
-            "video_length": 81,
+            "video_length": 361,
             "batch_size": 1,
             "seed": 42,
             "num_inference_steps": 8,
@@ -71,37 +77,70 @@ class Wan2GPClient:
             "mode": "",
             "activated_loras": []
         }
-    
-    def _docker_exec(self, cmd: str) -> tuple[str, str]:
-        """Execute command in wan2gp container."""
-        full_cmd = f"docker exec {self.DOCKER_CONTAINER} {cmd}"
-        result = subprocess.run(
-            full_cmd, 
-            shell=True, 
-            capture_output=True, 
-            text=True,
-            timeout=1800  # 30 min timeout
-        )
-        return result.stdout, result.stderr
-    
+
+    def _docker_exec(self, cmd: str, container_name: str = "wan2gp") -> tuple[str, str]:
+        """Execute command in a specific wan2gp container.
+        Uses Popen with tempfile-based output to avoid pipe buffer deadlocks
+        that occur with subprocess.run(capture_output=True) on long-running commands.
+        """
+        full_cmd = f"docker exec {container_name} {cmd}"
+        logger.info(f"Executing: {full_cmd}")
+
+        # Use tempfiles to avoid pipe buffer deadlock with large output
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='_stdout.log', delete=True) as stdout_f, \
+             tempfile.NamedTemporaryFile(mode='w+', suffix='_stderr.log', delete=True) as stderr_f:
+
+            process = subprocess.Popen(
+                full_cmd,
+                shell=True,
+                stdout=stdout_f,
+                stderr=stderr_f,
+                text=True,
+            )
+
+            try:
+                exit_code = process.wait(timeout=1800)  # 30 min timeout
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                raise
+
+            # Read output from tempfiles
+            stdout_f.seek(0)
+            stderr_f.seek(0)
+            stdout = stdout_f.read()
+            stderr = stderr_f.read()
+
+            logger.info(f"Command exited with code {exit_code}")
+            if exit_code != 0:
+                logger.warning(f"Non-zero exit code {exit_code}. stderr: {stderr[-500:]}")
+
+            return stdout, stderr
+
     def submit_job(
         self,
         job_id: str,
         prompt: str,
+        container_name: str = "wan2gp-gpu0",
+        settings_dir: str = None,
+        outputs_dir: str = None,
         resolution: str = "1280x720",
-        video_length: int = 81,
+        video_length: int = 361,
         seed: int = -1,
         steps: int = 8,
         loras: Optional[Dict[str, float]] = None,
         output_filename: str = "",
-        settings_override: Optional[Dict] = None
+        settings_override: Optional[Dict] = None,
     ) -> Dict:
         """
-        Submit a video generation job.
-        
+        Submit a video generation job to a specific container.
+
         Args:
             job_id: Unique job identifier
             prompt: Video description
+            container_name: Docker container to exec into (wan2gp-gpu0/1/2)
+            settings_dir: Host path for settings files
+            outputs_dir: Host path for output files
             resolution: Video resolution (e.g., "1280x720")
             video_length: Number of frames (81≈5s, 361≈15s)
             seed: Random seed (-1 for random)
@@ -109,113 +148,186 @@ class Wan2GPClient:
             loras: Dict of {lora_filename: multiplier}
             output_filename: Custom output name
             settings_override: Full settings dictionary to use as base
-        
+
         Returns:
             {"status": "success"|"error", "output_file": str, "stdout": str, "stderr": str}
         """
+        settings_dir = settings_dir or self.DEFAULT_SETTINGS_DIR
+        outputs_dir = outputs_dir or self.DEFAULT_OUTPUTS_DIR
+
         # Build settings
         if settings_override:
             settings = settings_override.copy()
         else:
             settings = self.template.copy()
-            
+
         settings.update({
             "prompt": prompt,
             "resolution": resolution,
             "video_length": video_length,
             "seed": seed if seed > 0 else -1,
             "num_inference_steps": steps,
-            "output_filename": output_filename or job_id
+            "output_filename": output_filename or job_id,
         })
-        
+
         if loras:
             if isinstance(loras, dict):
                 settings["activated_loras"] = list(loras.keys())
                 settings["loras_multipliers"] = " ".join(str(v) for v in loras.values())
             elif isinstance(loras, list):
-                # Handle cases where it might already be a list or needs custom handling
                 settings["activated_loras"] = loras
-        
+
+        # Ensure settings directory exists
+        os.makedirs(settings_dir, exist_ok=True)
+        os.makedirs(outputs_dir, exist_ok=True)
+
         # Write settings file
         settings_filename = f"api_job_{job_id}.json"
-        settings_path = Path(self.SETTINGS_DIR) / settings_filename
-        
+        settings_path = Path(settings_dir) / settings_filename
+
         with open(settings_path, 'w') as f:
             json.dump(settings, indent=2, fp=f)
-        
-        # Execute headless generation
+
+        logger.info(f"Settings written to: {settings_path}")
+
+        # Execute headless generation in the specific container
+        # Inside the container, settings are at /workspace/settings/
         docker_settings_path = f"/workspace/settings/{settings_filename}"
-        cmd = f"python3 wgp.py --process {docker_settings_path}"
-        
+        cmd = f"python3 wgp.py --process {docker_settings_path} --output-dir /workspace/outputs"
+
+        # Snapshot existing output files to detect new ones
+        existing_outputs = set()
         try:
-            stdout, stderr = self._docker_exec(cmd)
-            
-            # Parse output filename
+            existing_outputs = set(os.listdir(outputs_dir))
+        except OSError:
+            pass
+
+        try:
+            stdout, stderr = self._docker_exec(cmd, container_name)
+
+            # Parse output filename from logs
             output_file = self._extract_output_filename(stdout, stderr)
-            
+
+            # If not found in logs, detect new files in outputs directory
+            if not output_file:
+                try:
+                    new_outputs = set(os.listdir(outputs_dir)) - existing_outputs
+                    mp4_files = [f for f in new_outputs if f.endswith('.mp4')]
+                    if mp4_files:
+                        # Pick the most recently modified file
+                        mp4_files.sort(key=lambda f: os.path.getmtime(os.path.join(outputs_dir, f)), reverse=True)
+                        output_file = mp4_files[0]
+                        logger.info(f"Detected new output file: {output_file}")
+                except OSError:
+                    pass
+
+            # If output file exists → success (even if stderr has warnings)
+            # Wan2GP often writes non-fatal warnings to stderr containing "error"
+            if output_file:
+                return {
+                    "status": "success",
+                    "output_file": output_file,
+                    "stdout": stdout[-500:],
+                    "stderr": stderr[-500:] if stderr else "",
+                }
+
+            # No output file produced → check stderr for real errors
             if "error" in stderr.lower() or "traceback" in stderr.lower():
                 return {
                     "status": "error",
                     "output_file": None,
-                    "stdout": stdout[:1000],
-                    "stderr": stderr[:1000]
+                    "stdout": stdout[-1000:],
+                    "stderr": stderr[-1000:],
                 }
-            
+
+            # No output file and no clear error
             return {
-                "status": "success",
-                "output_file": output_file,
-                "stdout": stdout[-500:],  # Last 500 chars
-                "stderr": stderr[-500:] if stderr else ""
+                "status": "error",
+                "output_file": None,
+                "stdout": stdout[-500:],
+                "stderr": stderr[-500:] if stderr else "No output file generated",
             }
-        
+
         except subprocess.TimeoutExpired:
             return {
                 "status": "error",
                 "output_file": None,
                 "stdout": "",
-                "stderr": "Generation timeout (30 min exceeded)"
+                "stderr": "Generation timeout (30 min exceeded)",
             }
         except Exception as e:
             return {
                 "status": "error",
                 "output_file": None,
                 "stdout": "",
-                "stderr": str(e)
+                "stderr": str(e),
             }
-    
+
     def _extract_output_filename(self, stdout: str, stderr: str) -> Optional[str]:
         """Extract output filename from generation logs."""
         combined = stdout + stderr
-        
-        # Look for common patterns
+
         for line in combined.split('\n'):
             if 'saved video:' in line.lower() or 'output:' in line.lower():
-                # Extract .mp4 filename
                 if '.mp4' in line:
                     parts = line.split('/')
                     for part in reversed(parts):
                         if '.mp4' in part:
                             return part.strip()
-        
-        # Fallback: look for any .mp4 mention
+
         for line in combined.split('\n'):
             if '.mp4' in line:
                 words = line.split()
                 for word in words:
                     if '.mp4' in word:
                         return word.strip().rstrip(',').rstrip('.')
-        
+
         return None
-    
-    def list_outputs(self, limit: int = 20) -> list[str]:
-        """List recent output files."""
+
+    def list_outputs(self, container_name: str = "wan2gp-gpu0", limit: int = 20) -> list[str]:
+        """List recent output files from a specific container."""
         try:
-            stdout, _ = self._docker_exec(f"ls -t /workspace/outputs/*.mp4 | head -{limit}")
+            stdout, _ = self._docker_exec(
+                f"ls -t /workspace/outputs/*.mp4 | head -{limit}",
+                container_name,
+            )
             files = [f.split('/')[-1] for f in stdout.strip().split('\n') if f]
             return files
         except:
             return []
-    
-    def get_output_path(self, filename: str) -> Path:
-        """Get full path to output file."""
-        return Path(self.OUTPUTS_DIR) / filename
+
+    def get_output_path(self, filename: str, gpu_id: int = 0) -> Path:
+        """Get full host path to output file for a specific GPU."""
+        outputs_dir = os.getenv(
+            f"WAN2GP_OUTPUTS_DIR_{gpu_id}",
+            f"/nvme0n1-disk/wan2gp_data/gpu{gpu_id}/outputs"
+        )
+        return Path(outputs_dir) / filename
+
+    def check_container_health(self, container_name: str) -> bool:
+        """Check if a wan2gp container is running and responsive."""
+        try:
+            result = subprocess.run(
+                f"docker inspect --format='{{{{.State.Running}}}}' {container_name}",
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return result.stdout.strip() == "true"
+        except Exception:
+            return False
+
+    def get_available_loras(self, container_name: str = "wan2gp-gpu0") -> list[str]:
+        """List available LoRA files in the container."""
+        try:
+            stdout, stderr = self._docker_exec(
+                "ls /workspace/models/loras/ 2>/dev/null || echo 'No loras directory'",
+                container_name,
+            )
+            # Filter for .safetensors files
+            loras = [f.strip() for f in stdout.strip().split('\\n') if f.strip().endswith('.safetensors')]
+            return loras
+        except Exception as e:
+            logger.error(f"Failed to list LoRAs in {container_name}: {e}")
+            return []

@@ -4,8 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wan2GP Video Generation Dashboard</title>
+    <title>Wan2GP — AI Video Generation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #0f0f1a;
+            --surface: rgba(255, 255, 255, 0.06);
+            --surface-hover: rgba(255, 255, 255, 0.1);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e4e4ef;
+            --text-dim: #8888a0;
+            --accent: #7c5cfc;
+            --accent-glow: rgba(124, 92, 252, 0.35);
+            --green: #34d399;
+            --green-bg: rgba(52, 211, 153, 0.12);
+            --amber: #fbbf24;
+            --amber-bg: rgba(251, 191, 36, 0.12);
+            --red: #f87171;
+            --red-bg: rgba(248, 113, 113, 0.12);
+            --blue: #60a5fa;
+            --blue-bg: rgba(96, 165, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,970 +35,1200 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* animated gradient bg */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(124, 92, 252, .15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(52, 211, 153, .08) 0%, transparent 60%);
+            z-index: -1;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
+            padding: 24px 20px;
         }
 
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+        /* ─── Header ─── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
         }
 
-        header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
         }
 
-        header p {
-            opacity: 0.9;
-            font-size: 14px;
+        .header h1 span {
+            color: var(--accent);
         }
 
-        .content {
-            padding: 30px;
+        .header-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
         }
 
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
+        /* ─── GPU Status Row ─── */
+        .gpu-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
         }
 
-        .section h2 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 20px;
+        .gpu-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            backdrop-filter: blur(12px);
+            transition: all .25s;
         }
 
-        .file-input-container {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
+        .gpu-card:hover {
+            background: var(--surface-hover);
         }
 
-        .file-input-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: inline-block;
+        .gpu-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .gpu-card h3 {
+            font-size: 15px;
             font-weight: 600;
-            transition: transform 0.2s;
         }
 
-        .file-input-btn:hover {
-            transform: translateY(-2px);
+        .gpu-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
         }
 
-        input[type="file"] {
+        .gpu-badge.free {
+            background: var(--green-bg);
+            color: var(--green);
+        }
+
+        .gpu-badge.busy {
+            background: var(--amber-bg);
+            color: var(--amber);
+        }
+
+        .gpu-badge.offline {
+            background: var(--red-bg);
+            color: var(--red);
+        }
+
+        .gpu-detail {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* ─── Tabs ─── */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            margin-bottom: 28px;
+            width: fit-content;
+        }
+
+        .tab-btn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .tab-content {
             display: none;
         }
 
-        .file-name {
-            margin-left: 15px;
-            color: #666;
-            font-style: italic;
+        .tab-content.active {
+            display: block;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+        /* ─── Cards ─── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            backdrop-filter: blur(12px);
+            margin-bottom: 24px;
         }
 
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .card h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
         }
 
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-
-        .video-prompts {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .prompt-card {
-            background: white;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            border: 1px solid #dee2e6;
-        }
-
-        .prompt-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .prompt-id {
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .duration-badge {
-            background: #ffc107;
-            color: #000;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .prompt-text {
-            color: #666;
-            font-size: 14px;
-            line-height: 1.6;
-            max-height: 60px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .progress-section {
-            margin-top: 20px;
-        }
-
-        .job-item {
-            background: white;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            border-left: 4px solid #667eea;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .job-info {
-            flex: 1;
-        }
-
-        .job-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .job-status {
-            font-size: 12px;
-            color: #666;
-        }
-
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-queued {
-            background: #ffc107;
-            color: #000;
-        }
-
-        .status-running {
-            background: #2196F3;
-            color: white;
-        }
-
-        .status-completed {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .status-error {
-            background: #f44336;
-            color: white;
-        }
-
-        .api-config {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 15px;
-            align-items: end;
-        }
-
+        /* ─── Form Elements ─── */
+        textarea,
         input[type="text"],
-        input[type="number"] {
+        input[type="number"],
+        select {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: inherit;
             font-size: 14px;
+            transition: border-color .2s;
+            resize: vertical;
+        }
+
+        textarea:focus,
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        textarea::placeholder {
+            color: var(--text-dim);
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            font-size: 13px;
             font-weight: 600;
-            color: #495057;
-            font-size: 14px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .5px;
         }
 
-        .error-message {
-            background: #fee;
-            border: 1px solid #fcc;
-            color: #c00;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 15px;
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        /* range slider */
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            background: transparent;
+            cursor: pointer;
+        }
+
+        /* ─── Buttons ─── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .25s;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #a78bfa);
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        .btn-primary:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        .btn-success {
+            background: var(--green);
+        }
+
+        .btn-ghost {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface-hover);
+        }
+
+        .btn-danger {
+            background: var(--red);
+        }
+
+        /* ─── Active Job Panel ─── */
+        .active-job {
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-top: 24px;
+            background: rgba(124, 92, 252, .06);
+            animation: fadeIn .3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .active-job h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: var(--surface);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--green));
+            border-radius: 3px;
+            transition: width .5s;
+        }
+
+        .progress-bar-fill.indeterminate {
+            width: 30% !important;
+            animation: indeterminate 1.5s infinite ease-in-out;
+        }
+
+        @keyframes indeterminate {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(400%);
+            }
+        }
+
+        .job-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .job-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* completed result */
+        .result-panel {
+            margin-top: 16px;
+            padding: 20px;
+            background: var(--green-bg);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(52, 211, 153, .2);
+        }
+
+        .result-panel video {
+            width: 100%;
+            max-width: 600px;
+            border-radius: var(--radius-sm);
+            margin: 12px 0;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        /* failed result */
+        .error-panel {
+            margin-top: 16px;
+            padding: 20px;
+            background: var(--red-bg);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(248, 113, 113, .2);
+            font-size: 13px;
+            color: var(--red);
+        }
+
+        /* ─── Stats Row ─── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 18px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        /* ─── History Table ─── */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(124, 92, 252, .1);
+        }
+
+        th {
+            padding: 14px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr {
+            transition: background .15s;
+            cursor: pointer;
+        }
+
+        tbody tr:hover {
+            background: var(--surface-hover);
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+
+        .status-pill.completed {
+            background: var(--green-bg);
+            color: var(--green);
+        }
+
+        .status-pill.running,
+        .status-pill.processing {
+            background: var(--blue-bg);
+            color: var(--blue);
+        }
+
+        .status-pill.queued {
+            background: var(--amber-bg);
+            color: var(--amber);
+        }
+
+        .status-pill.failed,
+        .status-pill.error {
+            background: var(--red-bg);
+            color: var(--red);
+        }
+
+        .status-pill.retrying {
+            background: var(--amber-bg);
+            color: var(--amber);
+        }
+
+        .prompt-preview {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-dim);
+        }
+
+        /* ─── Modal ─── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .7);
+            backdrop-filter: blur(4px);
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .modal-box {
+            background: #1a1a2e;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            max-width: 700px;
+            width: 100%;
+            position: relative;
+            animation: fadeIn .25s;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 24px;
+            color: var(--text-dim);
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        .detail-label {
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        /* ─── Spinner ─── */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .gpu-row {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+        }
+
+        /* toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            background: #1a1a2e;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px 24px;
+            font-size: 14px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .4);
+            animation: slideUp .3s;
+            display: none;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1>🎬 Wan2GP Video Generation Dashboard</h1>
-            <p>Process presentation.json and generate videos via API</p>
-        </header>
-
-        <div class="content">
-            <!-- Model Selection Tabs -->
-            <div class="section" style="margin-bottom: 20px; padding: 15px;">
-                <div class="model-tabs" style="display: flex; gap: 10px;">
-                    <button class="btn" id="modelTabLTX2" onclick="switchModel('ltx2')"
-                        style="flex: 1; background: #667eea;">LTX-2 (Standard)</button>
-                    <button class="btn" id="modelTabHunyuan" onclick="switchModel('hunyuan')"
-                        style="flex: 1; background: #ccc; color: #333;">Hunyuan 1.5 (New)</button>
-                </div>
+        <!-- Header -->
+        <div class="header">
+            <h1>🎬 <span>Wan2GP</span> Video Studio</h1>
+            <div class="header-right">
+                <span id="api-status-indicator" style="font-size:13px; color:var(--text-dim);">Connecting...</span>
             </div>
+        </div>
 
-            <!-- Step 1: Input Source -->
-            <div class="section">
-                <h2>📁 Step 1: Choose Source</h2>
-
-                <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <button class="btn" id="tabFile" onclick="switchTab('file')"
-                        style="flex: 1; background: #667eea;">Upload File</button>
-                    <button class="btn" id="tabManual" onclick="switchTab('manual')"
-                        style="flex: 1; background: #ccc; color: #333;">Manual Prompt</button>
+        <!-- GPU Status -->
+        <div class="gpu-row" id="gpu-row">
+            <div class="gpu-card">
+                <div class="gpu-card-head">
+                    <h3>⚡ GPU 0</h3><span class="gpu-badge offline">Loading</span>
                 </div>
-
-                <!-- Option A: File Upload -->
-                <div id="fileUploadSection">
-                    <div class="file-input-container">
-                        <label for="fileInput" class="file-input-btn">
-                            Choose presentation.json
-                        </label>
-                        <input type="file" id="fileInput" accept=".json">
-                        <span class="file-name" id="fileName">No file selected</span>
-                    </div>
-
-                    <div class="stats" id="stats" style="display: none;">
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalSections">0</div>
-                            <div class="stat-label">Total Sections</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="videoSections">0</div>
-                            <div class="stat-label">Video Renderer Sections</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalPrompts">0</div>
-                            <div class="stat-label">Video Prompts</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Option B: Manual Input -->
-                <div id="manualInputSection" style="display: none;">
-                    <label for="manualPromptText">Enter Video Prompt:</label>
-                    <textarea id="manualPromptText" rows="6"
-                        style="width: 100%; padding: 15px; border: 2px solid #e9ecef; border-radius: 6px; font-size: 14px; margin-bottom: 15px; resize: vertical;"
-                        placeholder="Describe the video you want significantly... e.g. A cinematic drone shot of a futuristic cyberpunk city with neon lights and flying cars, 8k resolution, highly detailed"></textarea>
-
-                    <button class="btn" onclick="processManualPrompt()">Set Manual Prompt</button>
-                </div>
+                <div class="gpu-detail">—</div>
             </div>
-
-            <!-- Step 2: Configure API & Video Settings -->
-            <div class="section" id="configSection" style="display: none;">
-                <h2>⚙️ Step 2: Configuration</h2>
-
-                <!-- API Config -->
-                <div class="api-config">
-                    <div>
-                        <label for="apiUrl">API URL</label>
-                        <input type="text" id="apiUrl" value="http://69.30.250.80:8000"
-                            placeholder="http://69.30.250.80:8000">
-                    </div>
-                    <button class="btn" onclick="testAPI()">Test Connection</button>
+            <div class="gpu-card">
+                <div class="gpu-card-head">
+                    <h3>⚡ GPU 1</h3><span class="gpu-badge offline">Loading</span>
                 </div>
-                <div id="apiStatus" style="margin-top: 10px;"></div>
-
-                <!-- Settings JSON Upload (Global) -->
-                <div
-                    style="margin-top: 20px; padding: 15px; background: #eef2ff; border-radius: 8px; border: 1px dashed #667eea;">
-                    <label style="margin-bottom: 10px; color: #4338ca;">🚀 Fast Config: Load Settings JSON</label>
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <label for="settingsJsonInput" class="btn"
-                            style="padding: 8px 16px; font-size: 14px; background: #4338ca;">
-                            📁 Load settings.json
-                        </label>
-                        <input type="file" id="settingsJsonInput" accept=".json" onchange="loadSettingsJson(this)">
-                        <span id="settingsStatus" style="font-size: 12px; color: #666;">No settings loaded</span>
-                    </div>
-                </div>
-
-                <!-- Video Settings -->
-                <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef;">
-                    <h3 style="color: #667eea; margin-bottom: 20px;">🎬 Video Generation Settings</h3>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <!-- Resolution -->
-                        <div>
-                            <label for="resolution">Resolution</label>
-                            <select id="resolution"
-                                style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 6px; font-size: 14px;">
-                                <option value="1280x720">720p (1280x720)</option>
-                                <option value="1920x1080">1080p (1920x1080)</option>
-                                <option value="768x768">Square (768x768)</option>
-                                <option value="512x512">Small Square (512x512)</option>
-                            </select>
-                        </div>
-
-                        <!-- Steps Slider -->
-                        <div>
-                            <label for="steps">Inference Steps: <span id="stepsValue">8</span></label>
-                            <input type="range" id="steps" min="1" max="50" value="8"
-                                style="width: 100%; accent-color: #667eea;"
-                                oninput="document.getElementById('stepsValue').textContent = this.value">
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 5px;">
-                                <span id="stepsMinLabel">1</span>
-                                <span id="stepsMaxLabel">50</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Hunyuan Specific Settings -->
-                    <div id="hunyuanSettings"
-                        style="display: none; margin-top: 20px; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <label for="flowShift">Flow Shift: <span id="flowShiftValue">8.0</span></label>
-                            <input type="range" id="flowShift" min="1" max="20" value="8" step="0.5"
-                                style="width: 100%; accent-color: #667eea;"
-                                oninput="document.getElementById('flowShiftValue').textContent = this.value">
-                        </div>
-                        <div>
-                            <label for="guidanceScale">Guidance Scale: <span id="guidanceScaleValue">1.0</span></label>
-                            <input type="range" id="guidanceScale" min="1" max="10" value="1" step="0.5"
-                                style="width: 100%; accent-color: #667eea;"
-                                oninput="document.getElementById('guidanceScaleValue').textContent = this.value">
-                        </div>
-                    </div>
-
-                    <!-- Duration Override -->
-                    <div style="margin-top: 20px;">
-                        <label>
-                            <input type="checkbox" id="overrideDuration" onchange="toggleDurationOverride()">
-                            Override duration for all videos
-                        </label>
-                        <div id="durationSliderContainer" style="display: none; margin-top: 10px;">
-                            <label for="durationSlider">Video Duration: <span id="durationValue">15</span>s (<span
-                                    id="framesValue">361</span> frames)</label>
-                            <input type="range" id="durationSlider" min="5" max="30" value="15" step="5"
-                                style="width: 100%; accent-color: #667eea;" oninput="updateDurationDisplay()">
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 5px;">
-                                <span>5s (81 frames)</span>
-                                <span>15s (361 frames)</span>
-                                <span>30s (720 frames)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="gpu-detail">—</div>
             </div>
-
-            <!-- Step 3: Video Prompts -->
-            <div class="section" id="promptsSection" style="display: none;">
-                <h2>🎥 Step 3: Video Prompts</h2>
-                <div class="video-prompts" id="promptsList"></div>
+            <div class="gpu-card">
+                <div class="gpu-card-head">
+                    <h3>⚡ GPU 2</h3><span class="gpu-badge offline">Loading</span>
+                </div>
+                <div class="gpu-detail">—</div>
             </div>
+        </div>
 
-            <!-- Step 4: Generate Videos -->
-            <div class="section" id="generateSection" style="display: none;">
-                <h2>🚀 Step 4: Generate Videos</h2>
-                <button class="btn" id="generateBtn" onclick="generateAllVideos()">
-                    Generate All Videos
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('generate')">🎬 Generate</button>
+            <button class="tab-btn" onclick="switchTab('history')">📊 History</button>
+        </div>
+
+        <!-- TAB: Generate -->
+        <div id="tab-generate" class="tab-content active">
+            <div class="card">
+                <h2>Create Video</h2>
+
+                <div class="form-group">
+                    <label>Prompt</label>
+                    <textarea id="prompt-input" rows="4"
+                        placeholder="Describe your video in detail... e.g. A cinematic drone shot of a futuristic cyberpunk city at night with neon lights reflecting off wet streets, flying cars passing between skyscrapers, 8K resolution, highly detailed"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Resolution</label>
+                        <select id="resolution">
+                            <option value="1280x720">720p (1280×720)</option>
+                            <option value="1920x1080">1080p (1920×1080)</option>
+                            <option value="768x768">Square (768×768)</option>
+                            <option value="512x512">Small (512×512)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <select id="duration">
+                            <option value="81">~5 seconds (81 frames)</option>
+                            <option value="161">~10 seconds (161 frames)</option>
+                            <option value="361">~15 seconds (361 frames)</option>
+                            <option value="481">~20 seconds (481 frames)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Inference Steps: <span id="steps-val">8</span></label>
+                        <input type="range" id="steps" min="4" max="30" value="8"
+                            oninput="document.getElementById('steps-val').textContent=this.value">
+                    </div>
+                    <div class="form-group">
+                        <label>Seed (-1 = random)</label>
+                        <input type="number" id="seed" value="-1" min="-1">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="generate-btn" onclick="submitGeneration()">
+                    🚀 Generate Video
                 </button>
 
-                <div class="progress-section" id="progressSection" style="display: none;">
-                    <h3 style="margin-bottom: 15px; color: #667eea;">Generation Progress</h3>
-                    <div id="jobsList"></div>
+                <!-- Active Job Display Area -->
+                <div id="active-jobs-area"></div>
+            </div>
+        </div>
+
+        <!-- TAB: History -->
+        <div id="tab-history" class="tab-content">
+            <!-- Stats -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total" style="color:var(--accent)">0</div>
+                    <div class="stat-label">Total Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-completed" style="color:var(--green)">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-running" style="color:var(--blue)">0</div>
+                    <div class="stat-label">Running</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-failed" style="color:var(--red)">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card" style="padding:0; overflow:hidden;">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Job ID</th>
+                                <th>Status</th>
+                                <th>GPU</th>
+                                <th>Prompt</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <tr>
+                                <td colspan="6" style="text-align:center; color:var(--text-dim); padding:40px;">Loading
+                                    jobs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Job Detail Modal -->
+    <div class="modal-overlay" id="job-modal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
     <script>
-        let presentationData = null;
-        let videoPrompts = [];
-        let jobs = [];
-        let apiBase = '';
-        let currentModel = 'ltx2';
-        let settingsOverride = null;
+        // ── Config ──────────────────────────────────────────────────
+        const API_BASE = `${window.location.protocol}//${window.location.host}`;
+        let activeJobs = []; // jobs currently being tracked on the Generate tab
+        let allJobs = [];    // history data
 
-        // Default Model Configs
-        const configs = {
-            ltx2: {
-                stepsMin: 8,
-                stepsMax: 20,
-                stepsDefault: 8,
-                resDefault: '1280x720'
-            },
-            hunyuan: {
-                stepsMin: 4,
-                stepsMax: 50,
-                stepsDefault: 8,
-                resDefault: '832x480'
-            }
-        };
-
-        function switchModel(model) {
-            currentModel = model;
-            const btnLTX2 = document.getElementById('modelTabLTX2');
-            const btnHunyuan = document.getElementById('modelTabHunyuan');
-            const hunyuanSettings = document.getElementById('hunyuanSettings');
-
-            if (model === 'hunyuan') {
-                btnHunyuan.style.background = '#667eea';
-                btnHunyuan.style.color = 'white';
-                btnLTX2.style.background = '#ccc';
-                btnLTX2.style.color = '#333';
-                hunyuanSettings.style.display = 'grid';
-
-                // Update slider limits
-                document.getElementById('steps').min = configs.hunyuan.stepsMin;
-                document.getElementById('steps').max = configs.hunyuan.stepsMax;
-                document.getElementById('steps').value = configs.hunyuan.stepsDefault;
-                document.getElementById('stepsMinLabel').textContent = configs.hunyuan.stepsMin;
-                document.getElementById('stepsMaxLabel').textContent = configs.hunyuan.stepsMax;
-                document.getElementById('resolution').value = configs.hunyuan.resDefault;
-            } else {
-                btnLTX2.style.background = '#667eea';
-                btnLTX2.style.color = 'white';
-                btnHunyuan.style.background = '#ccc';
-                btnHunyuan.style.color = '#333';
-                hunyuanSettings.style.display = 'none';
-
-                // Update slider limits
-                document.getElementById('steps').min = configs.ltx2.stepsMin;
-                document.getElementById('steps').max = configs.ltx2.stepsMax;
-                document.getElementById('steps').value = configs.ltx2.stepsDefault;
-                document.getElementById('stepsMinLabel').textContent = configs.ltx2.stepsMin;
-                document.getElementById('stepsMaxLabel').textContent = configs.ltx2.stepsMax;
-                document.getElementById('resolution').value = configs.ltx2.resDefault;
-            }
-            document.getElementById('stepsValue').textContent = document.getElementById('steps').value;
-        }
-
-        function loadSettingsJson(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    settingsOverride = data;
-
-                    // Update UI if fields exist
-                    if (data.num_inference_steps) {
-                        document.getElementById('steps').value = data.num_inference_steps;
-                        document.getElementById('stepsValue').textContent = data.num_inference_steps;
-                    }
-                    if (data.resolution) {
-                        // Check if resolution exists in dropdown, if not add it
-                        const resSelect = document.getElementById('resolution');
-                        let exists = false;
-                        for (let i = 0; i < resSelect.options.length; i++) {
-                            if (resSelect.options[i].value === data.resolution) {
-                                exists = true;
-                                break;
-                            }
-                        }
-                        if (!exists) {
-                            const opt = document.createElement('option');
-                            opt.value = data.resolution;
-                            opt.text = `Custom (${data.resolution})`;
-                            resSelect.add(opt);
-                        }
-                        resSelect.value = data.resolution;
-                    }
-                    if (data.flow_shift) {
-                        document.getElementById('flowShift').value = data.flow_shift;
-                        document.getElementById('flowShiftValue').textContent = data.flow_shift;
-                    }
-                    if (data.guidance_scale) {
-                        document.getElementById('guidanceScale').value = data.guidance_scale;
-                        document.getElementById('guidanceScaleValue').textContent = data.guidance_scale;
-                    }
-
-                    // Auto-switch to appropriate model tab if possible
-                    if (data.base_model_type && data.base_model_type.includes('hunyuan')) {
-                        switchModel('hunyuan');
-                    }
-
-                    document.getElementById('settingsStatus').innerHTML = `✅ <b>${file.name}</b> loaded successfully!`;
-                    document.getElementById('settingsStatus').style.color = '#155724';
-                } catch (err) {
-                    document.getElementById('settingsStatus').textContent = '❌ Error parsing JSON settings';
-                    document.getElementById('settingsStatus').style.color = '#721c24';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // File input handler for presentation.json
-        document.getElementById('fileInput').addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            document.getElementById('fileName').textContent = file.name;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    presentationData = JSON.parse(e.target.result);
-                    processPresentation();
-                } catch (err) {
-                    alert('Error parsing JSON: ' + err.message);
-                }
-            };
-            reader.readAsText(file);
+        // ── Init ────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshGPUStatus();
+            loadHistory();
+            setInterval(refreshGPUStatus, 4000);
+            setInterval(loadHistory, 8000);
+            setInterval(pollActiveJobs, 3000);
         });
 
-        function processPresentation() {
-            if (!presentationData || !presentationData.sections) {
-                alert('Invalid presentation format');
-                return;
-            }
-
-            const sections = presentationData.sections;
-            const videoSections = sections.filter(s => s.renderer === 'video');
-
-            // Extract all video prompts
-            videoPrompts = [];
-            videoSections.forEach(section => {
-                if (section.video_prompts) {
-                    section.video_prompts.forEach(vp => {
-                        // Parse the prompt field (it might be a string or object)
-                        let promptText = '';
-                        let duration = vp.duration_hint || 15;
-
-                        try {
-                            // Try to parse if it's a JSON string
-                            const cleanPrompt = vp.prompt.trim();
-                            if (cleanPrompt.startsWith('{')) {
-                                const parsed = eval('(' + cleanPrompt + ')');
-                                promptText = parsed.video_prompt || vp.prompt;
-                            } else {
-                                promptText = vp.prompt;
-                            }
-                        } catch {
-                            promptText = vp.prompt;
-                        }
-
-                        videoPrompts.push({
-                            beat_id: vp.beat_id,
-                            segment_id: vp.segment_id,
-                            prompt: promptText,
-                            duration_hint: duration,
-                            section_id: section.section_id,
-                            section_title: section.title
-                        });
-                    });
-                }
-            });
-
-            // Update stats
-            document.getElementById('totalSections').textContent = sections.length;
-            document.getElementById('videoSections').textContent = videoSections.length;
-            document.getElementById('totalPrompts').textContent = videoPrompts.length;
-            document.getElementById('stats').style.display = 'grid';
-
-            // Show config section
-            document.getElementById('configSection').style.display = 'block';
-
-            // Display prompts
-            displayPrompts();
-            document.getElementById('promptsSection').style.display = 'block';
-            document.getElementById('generateSection').style.display = 'block';
+        // ── Tabs ────────────────────────────────────────────────────
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            event.target.classList.add('active');
+            if (tab === 'history') loadHistory();
         }
 
-        function displayPrompts() {
-            const container = document.getElementById('promptsList');
-            container.innerHTML = videoPrompts.map((vp, index) => `
-                <div class="prompt-card">
-                    <div class="prompt-header">
-                        <div class="prompt-id">${index + 1}. ${vp.beat_id}</div>
-                        <div class="duration-badge">${vp.duration_hint}s (~${calculateFrames(vp.duration_hint)} frames)</div>
-                    </div>
-                    <div class="prompt-text">${vp.prompt.substring(0, 200)}...</div>
-                </div>
-            `).join('');
-        }
-
-        function convertFramesToSeconds(hint) {
-            return hint;
-        }
-
-        function toggleDurationOverride() {
-            const container = document.getElementById('durationSliderContainer');
-            const checkbox = document.getElementById('overrideDuration');
-            container.style.display = checkbox.checked ? 'block' : 'none';
-        }
-
-        function updateDurationDisplay() {
-            const duration = parseInt(document.getElementById('durationSlider').value);
-            const frames = calculateFrames(duration);
-            document.getElementById('durationValue').textContent = duration;
-            document.getElementById('framesValue').textContent = frames;
-        }
-
-        async function testAPI() {
-            apiBase = document.getElementById('apiUrl').value;
-            const statusDiv = document.getElementById('apiStatus');
-
-            statusDiv.innerHTML = '<p>Testing connection...</p>';
-
+        // ── GPU Status ──────────────────────────────────────────────
+        async function refreshGPUStatus() {
             try {
-                const response = await fetch(`${apiBase}/health`, {
-                    method: 'GET',
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
+                // Fetch both endpoints in parallel
+                const [healthRes, statusRes] = await Promise.all([
+                    fetch(`${API_BASE}/health`),
+                    fetch(`${API_BASE}/gpu_status`)
+                ]);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
+                const healthData = await healthRes.json();
+                const statusData = await statusRes.json();
 
-                const data = await response.json();
+                const indicator = document.getElementById('api-status-indicator');
 
-                if (data.api === 'healthy') {
-                    statusDiv.innerHTML = `
-                        <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px;">
-                            <strong>✅ API Connected!</strong><br>
-                            <small>Redis: ${data.redis} | Celery: ${data.celery} | Wan2GP: ${data.wan2gp_container}</small>
-                        </div>
-                    `;
+                if (healthData.status === 'healthy') {
+                    indicator.innerHTML = `<span style="color:var(--green)">● API Healthy</span> — ${healthData.healthy_gpus}/3 GPUs`;
                 } else {
-                    statusDiv.innerHTML = `
-                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 6px;">
-                            <strong>⚠️ API reachable but some services unhealthy</strong><br>
-                            <small>${JSON.stringify(data)}</small>
+                    indicator.innerHTML = `<span style="color:var(--amber)">● Degraded</span> — ${healthData.healthy_gpus}/3 GPUs`;
+                }
+
+                const row = document.getElementById('gpu-row');
+                row.innerHTML = '';
+
+                for (let i = 0; i < 3; i++) {
+                    const gpuKey = `gpu_${i}`;
+                    const gpuHealth = healthData.gpu_containers[gpuKey];
+                    const healthy = gpuHealth && gpuHealth.healthy;
+
+                    // Get details from statusData
+                    let busy = false;
+                    let currentJob = null;
+                    const gpuInfo = statusData.gpus[String(i)];
+
+                    if (gpuInfo) {
+                        busy = gpuInfo.busy;
+                        currentJob = gpuInfo.current_job;
+                    }
+
+                    const badgeClass = !healthy ? 'offline' : busy ? 'busy' : 'free';
+                    const badgeText = !healthy ? 'Offline' : busy ? 'Busy' : 'Free';
+                    const detail = busy && currentJob ? `Processing: ${currentJob}` : healthy ? 'Idle — Ready' : 'Container not responding';
+
+                    row.innerHTML += `
+                        <div class="gpu-card">
+                            <div class="gpu-card-head">
+                                <h3>⚡ GPU ${i}</h3>
+                                <span class="gpu-badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                            <div class="gpu-detail">${detail}</div>
                         </div>
                     `;
                 }
-            } catch (err) {
-                console.error('API Test Error:', err);
-                statusDiv.innerHTML = `
-                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 6px;">
-                        <strong>❌ Connection failed: ${err.message}</strong><br>
-                        <small>Make sure the server is accessible and CORS is enabled. Try accessing <a href="${apiBase}/docs" target="_blank">${apiBase}/docs</a> directly.</small>
-                    </div>
-                `;
+            } catch (e) {
+                console.error("GPU Status Error:", e);
+                document.getElementById('api-status-indicator').innerHTML = `<span style="color:var(--red)">● Offline</span>`;
             }
         }
 
-        async function generateAllVideos() {
-            if (!apiBase) {
-                alert('Please test API connection first!');
-                return;
-            }
+        // ── Generate ────────────────────────────────────────────────
+        async function submitGeneration() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) return showToast('❗ Please enter a prompt');
+            if (prompt.length < 10) return showToast('❗ Prompt too short (min 10 chars)');
 
-            if (videoPrompts.length === 0) {
-                alert('No video prompts found!');
-                return;
-            }
+            const btn = document.getElementById('generate-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Submitting...';
 
-            document.getElementById('generateBtn').disabled = true;
-            document.getElementById('progressSection').style.display = 'block';
-
-            jobs = [];
-
-            for (let i = 0; i < videoPrompts.length; i++) {
-                const vp = videoPrompts[i];
-                await submitJob(vp, i);
-                await sleep(1000); // 1s delay between submissions
-            }
-
-            // Start polling
-            pollJobs();
-        }
-
-        async function submitJob(vp, index) {
-            // Get basics from UI
-            const resolution = document.getElementById('resolution').value;
-            const steps = parseInt(document.getElementById('steps').value);
-            const overrideDuration = document.getElementById('overrideDuration').checked;
-
-            let duration;
-            if (overrideDuration) {
-                duration = parseInt(document.getElementById('durationSlider').value);
-            } else {
-                duration = vp.duration_hint;
-            }
-
-            const frames = calculateFrames(duration);
-
-            // Prepare payload
             const payload = {
-                prompt: vp.prompt,
-                resolution: resolution,
-                video_length: frames,
-                seed: -1,
-                steps: steps
+                prompt: prompt,
+                resolution: document.getElementById('resolution').value,
+                video_length: parseInt(document.getElementById('duration').value),
+                steps: parseInt(document.getElementById('steps').value),
+                seed: parseInt(document.getElementById('seed').value)
             };
 
-            // Apply Settings Override if available
-            if (settingsOverride) {
-                payload.settings_override = JSON.parse(JSON.stringify(settingsOverride));
-                // Ensure the prompt and duration from the loop beats are preserved
-                payload.settings_override.prompt = vp.prompt;
-                payload.settings_override.video_length = frames;
-                payload.settings_override.resolution = resolution;
-                payload.settings_override.num_inference_steps = steps;
-
-                // If Hunyuan tab is active, also grab manual slider overrides for Flow Shift and Guidance
-                if (currentModel === 'hunyuan') {
-                    payload.settings_override.flow_shift = parseFloat(document.getElementById('flowShift').value);
-                    payload.settings_override.guidance_scale = parseFloat(document.getElementById('guidanceScale').value);
-                }
-            } else if (currentModel === 'ltx2') {
-                // Default LTX-2 loras if no override
-                payload.loras = {
-                    "ltx-2-19b-ic-lora-detailer.safetensors": 0.9,
-                    "ltx-2-19b-lora-camera-control-static.safetensors": 0.6
-                };
-            }
-
             try {
-                const response = await fetch(`${apiBase}/generate`, {
+                const res = await fetch(`${API_BASE}/generate`, {
                     method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(`HTTP ${response.status}: ${errData.detail || 'Unknown error'}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || `HTTP ${res.status}`);
                 }
 
-                const data = await response.json();
+                const data = await res.json();
 
-                jobs.push({
-                    index: index,
-                    beat_id: vp.beat_id,
+                // Track this job
+                activeJobs.push({
                     job_id: data.job_id,
                     status: data.status,
-                    prompt: vp.prompt.substring(0, 100),
-                    resolution: resolution,
-                    steps: steps,
-                    duration: duration
+                    prompt: prompt.substring(0, 120),
+                    resolution: payload.resolution,
+                    gpu_id: data.gpu_id,
+                    submitted_at: Date.now(),
+                    elapsed: 0
                 });
 
-                updateJobsDisplay();
-            } catch (err) {
-                console.error('Job submission failed:', err);
-                jobs.push({
-                    index: index,
-                    beat_id: vp.beat_id,
-                    job_id: 'ERROR',
-                    status: 'error',
-                    prompt: err.message
-                });
-                updateJobsDisplay();
+                renderActiveJobs();
+                showToast(`✅ Job submitted! ${data.message}`);
+                document.getElementById('prompt-input').value = '';
+
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Generate Video';
             }
         }
 
-        function calculateFrames(durationSeconds) {
-            // ~24 fps for LTX-2 or Hunyuan
-            if (durationSeconds <= 5) return 81;
-            if (durationSeconds <= 10) return 161;
-            if (durationSeconds <= 15) return 361;
-            if (durationSeconds <= 20) return 481;
-            if (durationSeconds <= 25) return 601;
-            if (durationSeconds <= 30) return 721;
-            // Larger values (for long presentations)
-            return Math.ceil(durationSeconds * 24 / 8) * 8 + 1;
+        // ── Active Job Polling ──────────────────────────────────────
+        async function pollActiveJobs() {
+            if (activeJobs.length === 0) return;
+
+            let changed = false;
+            for (let job of activeJobs) {
+                if (job.status === 'completed' || job.status === 'failed') continue;
+                try {
+                    const res = await fetch(`${API_BASE}/status/${job.job_id}`);
+                    const data = await res.json();
+                    if (data.status !== job.status) changed = true;
+                    job.status = data.status;
+                    job.gpu_id = data.gpu_id;
+                    job.output_file = data.output_file;
+                    job.error = data.error;
+                    job.duration_seconds = data.duration_seconds;
+                    job.elapsed = Math.floor((Date.now() - job.submitted_at) / 1000);
+                } catch (e) { }
+            }
+            // Update elapsed for running jobs
+            for (let job of activeJobs) {
+                if (job.status !== 'completed' && job.status !== 'failed') {
+                    job.elapsed = Math.floor((Date.now() - job.submitted_at) / 1000);
+                }
+            }
+            renderActiveJobs();
         }
 
-        function updateJobsDisplay() {
-            const container = document.getElementById('jobsList');
-            container.innerHTML = jobs.map((job, idx) => `
-                <div class="job-item">
-                    <div class="job-info">
-                        <div class="job-title">${idx + 1}. ${job.beat_id}</div>
-                        <div class="job-status">Job ID: ${job.job_id}</div>
-                    </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <span class="status-badge status-${job.status}">${job.status.toUpperCase()}</span>
-                        ${job.status === 'completed' ? `
-                            <a href="${apiBase}/download/${job.job_id}" 
-                               download="${job.job_id}.mp4"
-                               class="btn" 
-                               style="padding: 8px 16px; font-size: 14px; text-decoration: none;">
-                                ⬇️ Download
-                            </a>
-                        ` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
+        function renderActiveJobs() {
+            const area = document.getElementById('active-jobs-area');
+            if (activeJobs.length === 0) { area.innerHTML = ''; return; }
 
-        let pollInterval = null;
-        async function pollJobs() {
-            if (pollInterval) clearInterval(pollInterval);
+            area.innerHTML = activeJobs.map(job => {
+                const elapsed = formatElapsed(job.elapsed || 0);
+                const statusIcon = {
+                    'queued': '⏳', 'processing': '🎬', 'running': '🎬',
+                    'completed': '✅', 'failed': '❌', 'error': '❌', 'retrying': '🔄'
+                }[job.status] || '❓';
 
-            pollInterval = setInterval(async () => {
-                let allDone = true;
+                let content = `
+                    <div class="active-job">
+                        <h3>${statusIcon} ${job.job_id}
+                            <span class="status-pill ${job.status}" style="margin-left:auto">${job.status.toUpperCase()}</span>
+                        </h3>
+                        <div class="job-meta">
+                            <span>📝 ${job.prompt}...</span>
+                        </div>
+                        <div class="job-meta" style="margin-top:8px">
+                            <span>🖥️ GPU ${job.gpu_id ?? '—'}</span>
+                            <span>📐 ${job.resolution}</span>
+                            <span>⏱️ ${elapsed}</span>
+                            ${job.duration_seconds ? `<span>✅ Done in ${formatElapsed(job.duration_seconds)}</span>` : ''}
+                        </div>
+                `;
 
-                for (let job of jobs) {
-                    if (job.status === 'queued' || job.status === 'running') {
-                        allDone = false;
-
-                        try {
-                            const response = await fetch(`${apiBase}/status/${job.job_id}`);
-                            const data = await response.json();
-                            job.status = data.status;
-                        } catch (err) {
-                            console.error('Status check failed:', err);
-                        }
-                    }
+                if (job.status === 'running' || job.status === 'processing' || job.status === 'queued') {
+                    content += `
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill indeterminate"></div>
+                        </div>
+                    `;
                 }
 
-                updateJobsDisplay();
-
-                if (allDone) {
-                    clearInterval(pollInterval);
-                    document.getElementById('generateBtn').disabled = false;
-                    alert(`All videos generated! ${jobs.filter(j => j.status === 'completed').length} completed, ${jobs.filter(j => j.status === 'error').length} errors.`);
+                if (job.status === 'completed') {
+                    const downloadUrl = `${API_BASE}/download/${job.job_id}`;
+                    content += `
+                        <div class="result-panel">
+                            <strong style="color:var(--green)">🎉 Video Ready!</strong>
+                            <video controls autoplay muted loop>
+                                <source src="${downloadUrl}" type="video/mp4">
+                            </video>
+                            <div class="result-actions">
+                                <a href="${downloadUrl}" download="${job.job_id}.mp4" class="btn btn-sm btn-success">⬇️ Download MP4</a>
+                                <button class="btn btn-sm btn-ghost" onclick="dismissJob('${job.job_id}')">✕ Dismiss</button>
+                            </div>
+                        </div>
+                    `;
                 }
-            }, 10000); // Poll every 10 seconds
+
+                if (job.status === 'failed' || job.status === 'error') {
+                    content += `
+                        <div class="error-panel">
+                            <strong>Generation Failed</strong><br>
+                            ${job.error || 'Unknown error'}
+                            <div style="margin-top:10px">
+                                <button class="btn btn-sm btn-primary" onclick="retryJob('${job.job_id}')">🔄 Retry</button>
+                                <button class="btn btn-sm btn-ghost" onclick="dismissJob('${job.job_id}')">✕ Dismiss</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                content += '</div>';
+                return content;
+            }).join('');
         }
 
-        function switchTab(mode) {
-            const btnFile = document.getElementById('tabFile');
-            const btnManual = document.getElementById('tabManual');
-            const sectionFile = document.getElementById('fileUploadSection');
-            const sectionManual = document.getElementById('manualInputSection');
+        function dismissJob(jobId) {
+            activeJobs = activeJobs.filter(j => j.job_id !== jobId);
+            renderActiveJobs();
+        }
 
-            if (mode === 'file') {
-                btnFile.style.background = '#667eea';
-                btnFile.style.color = 'white';
-                btnManual.style.background = '#ccc';
-                btnManual.style.color = '#333';
-                sectionFile.style.display = 'block';
-                sectionManual.style.display = 'none';
-            } else {
-                btnFile.style.background = '#ccc';
-                btnFile.style.color = '#333';
-                btnManual.style.background = '#667eea';
-                btnManual.style.color = 'white';
-                sectionFile.style.display = 'none';
-                sectionManual.style.display = 'block';
+        async function retryJob(jobId) {
+            try {
+                const res = await fetch(`${API_BASE}/retry/${jobId}`, { method: 'POST' });
+                const data = await res.json();
+                // Update in active jobs
+                const job = activeJobs.find(j => j.job_id === jobId);
+                if (job) {
+                    job.status = data.status || 'queued';
+                    job.submitted_at = Date.now();
+                    job.error = null;
+                }
+                renderActiveJobs();
+                showToast('🔄 Job retried');
+            } catch (e) {
+                showToast('❌ Retry failed');
             }
         }
 
-        function processManualPrompt() {
-            const promptText = document.getElementById('manualPromptText').value.trim();
-            if (!promptText) {
-                alert('Please enter a prompt');
-                return;
+        // ── History ─────────────────────────────────────────────────
+        async function loadHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/jobs/list?limit=500`);
+                const data = await res.json();
+                allJobs = data.jobs || [];
+
+                // Stats
+                const completed = allJobs.filter(j => j.status === 'completed').length;
+                const running = allJobs.filter(j => j.status === 'running' || j.status === 'processing' || j.status === 'queued').length;
+                const failed = allJobs.filter(j => j.status === 'failed' || j.status === 'error').length;
+
+                document.getElementById('stat-total').textContent = allJobs.length;
+                document.getElementById('stat-completed').textContent = completed;
+                document.getElementById('stat-running').textContent = running;
+                document.getElementById('stat-failed').textContent = failed;
+
+                // Table
+                const tbody = document.getElementById('history-tbody');
+                if (allJobs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:40px">No jobs yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = allJobs.map(job => {
+                    const statusClass = job.status || 'unknown';
+                    const gpuLabel = job.gpu_id !== null && job.gpu_id !== undefined ? `GPU ${job.gpu_id}` : '—';
+                    const prompt = (job.prompt || '').substring(0, 60);
+                    const created = job.created_at ? new Date(parseFloat(job.created_at) * 1000).toLocaleString() : '—';
+
+                    const actions = job.status === 'completed'
+                        ? `<a href="${API_BASE}/download/${job.job_id}" download class="btn btn-sm btn-success" onclick="event.stopPropagation()">⬇️</a>`
+                        : job.status === 'failed' || job.status === 'error'
+                            ? `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); retryJobFromHistory('${job.job_id}')">🔄</button>`
+                            : '<span style="color:var(--text-dim)">—</span>';
+
+                    return `
+                        <tr onclick="showJobDetail('${job.job_id}')">
+                            <td><code style="color:var(--accent);font-size:11px">${job.job_id}</code></td>
+                            <td><span class="status-pill ${statusClass}">${statusClass.toUpperCase()}</span></td>
+                            <td>${gpuLabel}</td>
+                            <td><div class="prompt-preview">${prompt}</div></td>
+                            <td style="font-size:12px;color:var(--text-dim)">${created}</td>
+                            <td>${actions}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (e) {
+                console.error('History load failed:', e);
             }
-
-            // Create a single manual job
-            videoPrompts = [{
-                beat_id: "manual_job_" + Date.now().toString().slice(-4),
-                segment_id: "manual",
-                prompt: promptText,
-                duration_hint: 15, // Default 15s, can be overridden by slider
-                section_id: "manual",
-                section_title: "Manual Prompt"
-            }];
-
-            // Update stats
-            document.getElementById('totalSections').textContent = 1;
-            document.getElementById('videoSections').textContent = 1;
-            document.getElementById('totalPrompts').textContent = 1;
-            document.getElementById('stats').style.display = 'grid';
-
-            // Show config section
-            document.getElementById('configSection').style.display = 'block';
-
-            // Display prompts
-            displayPrompts();
-            document.getElementById('promptsSection').style.display = 'block';
-            document.getElementById('generateSection').style.display = 'block';
-
-            // Scroll to config
-            document.getElementById('configSection').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+        async function retryJobFromHistory(jobId) {
+            try {
+                await fetch(`${API_BASE}/retry/${jobId}`, { method: 'POST' });
+                showToast('🔄 Job retried');
+                loadHistory();
+            } catch (e) {
+                showToast('❌ Retry failed');
+            }
+        }
+
+        // ── Job Detail Modal ────────────────────────────────────────
+        async function showJobDetail(jobId) {
+            try {
+                const res = await fetch(`${API_BASE}/status/${jobId}`);
+                const job = await res.json();
+
+                const modal = document.getElementById('job-modal');
+                const body = document.getElementById('modal-body');
+
+                const statusClass = job.status || 'unknown';
+                const created = job.created_at ? new Date(parseFloat(job.created_at) * 1000).toLocaleString() : '—';
+                const started = job.started_at ? new Date(parseFloat(job.started_at) * 1000).toLocaleString() : '—';
+                const completed = job.completed_at ? new Date(parseFloat(job.completed_at) * 1000).toLocaleString() : '—';
+
+                body.innerHTML = `
+                    <h2 style="margin-bottom:24px">Job Details</h2>
+
+                    <div class="detail-row"><div class="detail-label">Job ID</div><div class="detail-value"><code>${job.job_id}</code></div></div>
+                    <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value"><span class="status-pill ${statusClass}">${statusClass.toUpperCase()}</span></div></div>
+                    <div class="detail-row"><div class="detail-label">GPU</div><div class="detail-value">${job.gpu_id !== null ? 'GPU ' + job.gpu_id : '—'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Resolution</div><div class="detail-value">${job.resolution || '—'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Created</div><div class="detail-value">${created}</div></div>
+                    <div class="detail-row"><div class="detail-label">Started</div><div class="detail-value">${started}</div></div>
+                    <div class="detail-row"><div class="detail-label">Completed</div><div class="detail-value">${completed}</div></div>
+                    <div class="detail-row"><div class="detail-label">Duration</div><div class="detail-value">${job.duration_seconds ? formatElapsed(job.duration_seconds) : '—'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Retries</div><div class="detail-value">${job.retry_count}</div></div>
+
+                    <div style="margin-top:20px">
+                        <label style="margin-bottom:12px">Prompt</label>
+                        <div style="background:var(--surface);padding:16px;border-radius:var(--radius-sm);font-size:13px;line-height:1.7;max-height:200px;overflow-y:auto">${job.prompt || '—'}</div>
+                    </div>
+
+                    ${job.error ? `<div class="error-panel" style="margin-top:16px"><strong>Error:</strong> ${job.error}</div>` : ''}
+
+                    ${job.status === 'completed' ? `
+                        <div style="margin-top:20px">
+                            <video controls style="width:100%;border-radius:var(--radius-sm)">
+                                <source src="${API_BASE}/download/${job.job_id}" type="video/mp4">
+                            </video>
+                            <div style="margin-top:12px">
+                                <a href="${API_BASE}/download/${job.job_id}" download="${job.job_id}.mp4" class="btn btn-sm btn-success">⬇️ Download</a>
+                                <button class="btn btn-sm btn-danger" onclick="deleteJob('${job.job_id}')" style="margin-left:8px">🗑️ Delete</button>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${(job.status === 'failed' || job.status === 'error') ? `
+                        <div style="margin-top:16px">
+                            <button class="btn btn-sm btn-primary" onclick="retryJobFromHistory('${job.job_id}'); closeModal();">🔄 Retry Job</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteJob('${job.job_id}')" style="margin-left:8px">🗑️ Delete</button>
+                        </div>
+                    ` : ''}
+                `;
+
+                modal.classList.add('show');
+
+            } catch (e) {
+                showToast('❌ Failed to load job details');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('job-modal').classList.remove('show');
+        }
+        document.getElementById('job-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('job-modal')) closeModal();
+        });
+
+        async function deleteJob(jobId) {
+            if (!confirm('Delete this job record?')) return;
+            try {
+                await fetch(`${API_BASE}/jobs/${jobId}`, { method: 'DELETE' });
+                showToast('🗑️ Job deleted');
+                closeModal();
+                loadHistory();
+            } catch (e) {
+                showToast('❌ Delete failed');
+            }
+        }
+
+        // ── Helpers ─────────────────────────────────────────────────
+        function formatElapsed(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m}m ${s}s`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
         }
     </script>
 </body>
