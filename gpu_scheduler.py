@@ -207,6 +207,11 @@ class GPUScheduler:
                 "loras": loras,
                 "settings_override": settings_override,
                 "webhook_url": data.get("webhook_url", ""),
+                "image_start_token": data.get("image_start_token", ""),
+                "image_end_token": data.get("image_end_token", ""),
+                "audio_token": data.get("audio_token", ""),
+                "image_prompt_type": data.get("image_prompt_type", ""),
+                "audio_prompt_type": data.get("audio_prompt_type", ""),
             }
             
             self.job_queue.put(job_data)
@@ -235,6 +240,12 @@ class GPUScheduler:
             "settings_override": kwargs.get("settings_override"),
             "webhook_url": kwargs.get("webhook_url", ""),
             "submitted_at": time.time(),
+            # Image / audio attachments
+            "image_start_token": kwargs.get("image_start_token", ""),
+            "image_end_token": kwargs.get("image_end_token", ""),
+            "audio_token": kwargs.get("audio_token", ""),
+            "image_prompt_type": kwargs.get("image_prompt_type", ""),
+            "audio_prompt_type": kwargs.get("audio_prompt_type", ""),
         }
 
         # Store in Redis
@@ -251,6 +262,12 @@ class GPUScheduler:
             "created_at": str(time.time()),
             "client_ip": kwargs.get("client_ip", ""),
             "retry_count": "0",
+            # Image / audio attachment tokens persisted in Redis
+            "image_start_token": job_data["image_start_token"],
+            "image_end_token": job_data["image_end_token"],
+            "audio_token": job_data["audio_token"],
+            "image_prompt_type": job_data["image_prompt_type"],
+            "audio_prompt_type": job_data["audio_prompt_type"],
         })
 
         # Try to dispatch immediately
@@ -338,6 +355,11 @@ class GPUScheduler:
                 steps=job_data.get("steps", 8),
                 loras=job_data.get("loras", {}),
                 settings_override=job_data.get("settings_override"),
+                image_start_token=job_data.get("image_start_token", ""),
+                image_end_token=job_data.get("image_end_token", ""),
+                audio_token=job_data.get("audio_token", ""),
+                image_prompt_type=job_data.get("image_prompt_type", ""),
+                audio_prompt_type=job_data.get("audio_prompt_type", ""),
             )
 
             if result["status"] == "success":
@@ -384,6 +406,11 @@ class GPUScheduler:
                     steps=job_data.get("steps", 8),
                     loras=job_data.get("loras", {}),
                     settings_override=job_data.get("settings_override"),
+                    image_start_token=job_data.get("image_start_token", ""),
+                    image_end_token=job_data.get("image_end_token", ""),
+                    audio_token=job_data.get("audio_token", ""),
+                    image_prompt_type=job_data.get("image_prompt_type", ""),
+                    audio_prompt_type=job_data.get("audio_prompt_type", ""),
                 )
                 return  # Don't release GPU again below
             else:

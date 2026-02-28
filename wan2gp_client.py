@@ -4,6 +4,7 @@ Supports 3 GPU containers (wan2gp-gpu0, wan2gp-gpu1, wan2gp-gpu2).
 Each container has its own settings and outputs directories.
 """
 import subprocess
+import shutil
 import json
 import os
 import tempfile
@@ -11,6 +12,9 @@ import glob
 from pathlib import Path
 from typing import Dict, Optional
 import logging
+
+# Staging dir where uploaded files are stored before being copied to GPU settings dir
+UPLOADS_STAGING_DIR = os.getenv("WAN2GP_UPLOADS_DIR", "/nvme0n1-disk/wan2gp_data/uploads")
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +121,23 @@ class Wan2GPClient:
 
             return stdout, stderr
 
+    def _copy_media_to_settings(self, token: str, settings_dir: str) -> Optional[str]:
+        """
+        Copy a media file from uploads staging dir into the GPU's settings dir.
+        Returns the filename (not full path) so it can be referenced in settings JSON.
+        Returns None if token is empty or file not found.
+        """
+        if not token:
+            return None
+        src = Path(UPLOADS_STAGING_DIR) / token
+        if not src.exists():
+            logger.warning(f"⚠️ Media file not found in uploads: {src}")
+            return None
+        dst = Path(settings_dir) / token
+        shutil.copy2(str(src), str(dst))
+        logger.info(f"📁 Copied media file {token} → {dst}")
+        return token
+
     def submit_job(
         self,
         job_id: str,
@@ -131,6 +152,11 @@ class Wan2GPClient:
         loras: Optional[Dict[str, float]] = None,
         output_filename: str = "",
         settings_override: Optional[Dict] = None,
+        image_start_token: str = "",
+        image_end_token: str = "",
+        audio_token: str = "",
+        image_prompt_type: str = "",
+        audio_prompt_type: str = "",
     ) -> Dict:
         """
         Submit a video generation job to a specific container.
@@ -177,9 +203,33 @@ class Wan2GPClient:
             elif isinstance(loras, list):
                 settings["activated_loras"] = loras
 
-        # Ensure settings directory exists
+        # Ensure settings/outputs directories exist
         os.makedirs(settings_dir, exist_ok=True)
         os.makedirs(outputs_dir, exist_ok=True)
+        os.makedirs(UPLOADS_STAGING_DIR, exist_ok=True)
+
+        # ── Image / Audio Attachments ──────────────────────────────────
+        # Copy media files from staging into the GPU's settings dir so the
+        # container can see them at /workspace/settings/<filename>
+
+        start_file = self._copy_media_to_settings(image_start_token, settings_dir)
+        end_file   = self._copy_media_to_settings(image_end_token, settings_dir)
+        audio_file = self._copy_media_to_settings(audio_token, settings_dir)
+
+        if start_file:
+            settings["image_start"] = f"/workspace/settings/{start_file}"
+            # Auto-set image_prompt_type: S (start only) or SE (start+end)
+            settings["image_prompt_type"] = image_prompt_type if image_prompt_type else ("SE" if end_file else "S")
+            logger.info(f"🖼️  image_start={settings['image_start']} image_prompt_type={settings['image_prompt_type']}")
+
+        if end_file:
+            settings["image_end"] = f"/workspace/settings/{end_file}"
+            logger.info(f"🖼️  image_end={settings['image_end']}")
+
+        if audio_file:
+            settings["audio_guide"] = f"/workspace/settings/{audio_file}"
+            settings["audio_prompt_type"] = audio_prompt_type if audio_prompt_type else "A"
+            logger.info(f"🎵 audio_guide={settings['audio_guide']} audio_prompt_type={settings['audio_prompt_type']}")
 
         # Write settings file
         settings_filename = f"api_job_{job_id}.json"

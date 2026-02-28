@@ -3,13 +3,15 @@ Wan2GP Video Generation API — Multi-GPU Edition.
 FastAPI server with built-in GPU scheduler for 3 GPU containers.
 Replaces Celery with a thread-based scheduler for direct GPU management.
 """
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict
 import os
 import time
+import uuid
+import shutil
 import logging
 
 from gpu_scheduler import scheduler
@@ -28,6 +30,10 @@ app = FastAPI(
     description="AI video generation with 3-GPU round-robin scheduling",
     version="2.0.0",
 )
+
+# Uploads staging dir (image/audio files uploaded before job submission)
+UPLOADS_DIR = os.getenv("WAN2GP_UPLOADS_DIR", "/nvme0n1-disk/wan2gp_data/uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,6 +58,12 @@ class GenerateRequest(BaseModel):
     loras: Optional[Dict[str, float]] = None
     settings_override: Optional[Dict] = None
     webhook_url: Optional[str] = ""
+    # Image-to-video / audio fields
+    image_start_token: Optional[str] = ""   # file_token from POST /upload
+    image_end_token: Optional[str] = ""     # file_token from POST /upload
+    audio_token: Optional[str] = ""         # file_token from POST /upload
+    image_prompt_type: Optional[str] = ""   # "S" or "SE" (auto-set if blank)
+    audio_prompt_type: Optional[str] = ""   # "A" (auto-set if blank)
 
 
 class JobResponse(BaseModel):
@@ -110,6 +122,11 @@ def create_job(request: Request, req: GenerateRequest):
         settings_override=req.settings_override,
         webhook_url=req.webhook_url or "",
         client_ip=client_ip,
+        image_start_token=req.image_start_token or "",
+        image_end_token=req.image_end_token or "",
+        audio_token=req.audio_token or "",
+        image_prompt_type=req.image_prompt_type or "",
+        audio_prompt_type=req.audio_prompt_type or "",
     )
 
     # Estimate wait time
@@ -294,6 +311,46 @@ def delete_job(job_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
     return {"message": f"Job {job_id} deleted"}
+
+
+@app.post("/upload")
+async def upload_media(file: UploadFile = File(...)):
+    """
+    Upload an image or audio file for use in image-to-video generation.
+    Returns a file_token to pass as image_start_token / image_end_token / audio_token in /generate.
+
+    Supported formats:
+      Images: .jpg .jpeg .png .webp
+      Audio:  .wav .mp3
+    """
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".wav", ".mp3"}
+    ext = os.path.splitext(file.filename or "")[-1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # Generate unique token preserving original extension
+    token = f"{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(UPLOADS_DIR, token)
+
+    with open(dest, "wb") as out_file:
+        shutil.copyfileobj(file.file, out_file)
+
+    file_size = os.path.getsize(dest)
+    logger.info(f"📤 Uploaded {file.filename} → {token} ({file_size} bytes)")
+
+    return {
+        "file_token": token,
+        "original_filename": file.filename,
+        "size_bytes": file_size,
+        "type": "audio" if ext in {".wav", ".mp3"} else "image",
+        "usage": {
+            "image_start_token": token if ext not in {".wav", ".mp3"} else None,
+            "audio_token": token if ext in {".wav", ".mp3"} else None,
+        },
+    }
 
 
 @app.get("/loras")
