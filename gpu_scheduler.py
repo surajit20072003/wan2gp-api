@@ -33,25 +33,27 @@ class GPUScheduler:
     """
 
     def __init__(self, redis_client=None):
-        # GPU configuration — mirrors HeyGem's pattern
+        # Per-GPU settings dirs must match the HOST paths that GPU containers mount.
+        # GPU containers mount:  /nvme0n1-disk/wan2gp_data/gpuN/settings -> /workspace/settings
+        # Outputs are shared:    /nvme0n1-disk/wan2gp_data/outputs -> /workspace/outputs
         self.gpu_config = {
             0: {
                 "container": os.getenv("WAN2GP_CONTAINER_0", "wan2gp-gpu0"),
-                "outputs_dir": os.getenv("WAN2GP_OUTPUTS_DIR_0", "/nvme0n1-disk/wan2gp_data/gpu0/outputs"),
+                "outputs_dir": os.getenv("WAN2GP_OUTPUTS_DIR_0", "/nvme0n1-disk/wan2gp_data/outputs"),
                 "settings_dir": os.getenv("WAN2GP_SETTINGS_DIR_0", "/nvme0n1-disk/wan2gp_data/gpu0/settings"),
                 "busy": False,
                 "current_job": None,
             },
             1: {
                 "container": os.getenv("WAN2GP_CONTAINER_1", "wan2gp-gpu1"),
-                "outputs_dir": os.getenv("WAN2GP_OUTPUTS_DIR_1", "/nvme0n1-disk/wan2gp_data/gpu1/outputs"),
+                "outputs_dir": os.getenv("WAN2GP_OUTPUTS_DIR_1", "/nvme0n1-disk/wan2gp_data/outputs"),
                 "settings_dir": os.getenv("WAN2GP_SETTINGS_DIR_1", "/nvme0n1-disk/wan2gp_data/gpu1/settings"),
                 "busy": False,
                 "current_job": None,
             },
             2: {
                 "container": os.getenv("WAN2GP_CONTAINER_2", "wan2gp-gpu2"),
-                "outputs_dir": os.getenv("WAN2GP_OUTPUTS_DIR_2", "/nvme0n1-disk/wan2gp_data/gpu2/outputs"),
+                "outputs_dir": os.getenv("WAN2GP_OUTPUTS_DIR_2", "/nvme0n1-disk/wan2gp_data/outputs"),
                 "settings_dir": os.getenv("WAN2GP_SETTINGS_DIR_2", "/nvme0n1-disk/wan2gp_data/gpu2/settings"),
                 "busy": False,
                 "current_job": None,
@@ -203,7 +205,8 @@ class GPUScheduler:
                 "resolution": data.get("resolution", "1280x720"),
                 "video_length": int(data.get("video_length", 81)),
                 "seed": int(data.get("seed", -1)),
-                "steps": int(data.get("steps", 8)),
+                "steps": int(data.get("steps", -1)),
+                "model": data.get("model", "ltx2_distilled"),
                 "loras": loras,
                 "settings_override": settings_override,
                 "webhook_url": data.get("webhook_url", ""),
@@ -235,7 +238,8 @@ class GPUScheduler:
             "resolution": kwargs.get("resolution", "1280x720"),
             "video_length": kwargs.get("video_length", 81),
             "seed": kwargs.get("seed", -1),
-            "steps": kwargs.get("steps", 8),
+            "steps": kwargs.get("steps", -1),
+            "model": kwargs.get("model", "ltx2_distilled"),
             "loras": kwargs.get("loras", {}),
             "settings_override": kwargs.get("settings_override"),
             "webhook_url": kwargs.get("webhook_url", ""),
@@ -255,6 +259,7 @@ class GPUScheduler:
             "video_length": str(job_data["video_length"]),
             "seed": str(job_data["seed"]),
             "steps": str(job_data["steps"]),
+            "model": job_data["model"],
             "loras": json.dumps(job_data["loras"]),
             "settings_override": json.dumps(job_data["settings_override"]) if job_data["settings_override"] else "",
             "webhook_url": job_data["webhook_url"],
@@ -342,6 +347,8 @@ class GPUScheduler:
         logger.info(f"🎬 [GPU {gpu_id}] Starting job {job_id} on {container}")
         self._update_status(job_id, "running", gpu_id=gpu_id, started_at=str(time.time()))
 
+        _released_for_retry = False  # flag to prevent double-release in finally
+
         try:
             result = self.client.submit_job(
                 job_id=job_id,
@@ -352,7 +359,8 @@ class GPUScheduler:
                 resolution=job_data.get("resolution", "1280x720"),
                 video_length=job_data.get("video_length", 81),
                 seed=job_data.get("seed", -1),
-                steps=job_data.get("steps", 8),
+                steps=job_data.get("steps", -1),
+                model=job_data.get("model", "ltx2_distilled"),
                 loras=job_data.get("loras", {}),
                 settings_override=job_data.get("settings_override"),
                 image_start_token=job_data.get("image_start_token", ""),
@@ -394,25 +402,15 @@ class GPUScheduler:
                     error=error_msg,
                     retry_count=str(retry_count + 1),
                 )
-                # Release GPU first, then re-queue
-                self.release_gpu(gpu_id, job_id)
                 job_data["retry_count"] = retry_count + 1
+                # Release GPU and re-queue for retry
+                # IMPORTANT: set flag BEFORE release so finally block skips re-release
+                _released_for_retry = True
+                self.release_gpu(gpu_id, job_id)
                 time.sleep(10)  # Brief delay before retry
-                self.submit_job(
-                    job_id, job_data["prompt"],
-                    resolution=job_data.get("resolution", "1280x720"),
-                    video_length=job_data.get("video_length", 81),
-                    seed=job_data.get("seed", -1),
-                    steps=job_data.get("steps", 8),
-                    loras=job_data.get("loras", {}),
-                    settings_override=job_data.get("settings_override"),
-                    image_start_token=job_data.get("image_start_token", ""),
-                    image_end_token=job_data.get("image_end_token", ""),
-                    audio_token=job_data.get("audio_token", ""),
-                    image_prompt_type=job_data.get("image_prompt_type", ""),
-                    audio_prompt_type=job_data.get("audio_prompt_type", ""),
-                )
-                return  # Don't release GPU again below
+                self.job_queue.put(job_data)
+                self._process_next()
+                return
             else:
                 self._update_status(
                     job_id, "failed",
@@ -421,15 +419,16 @@ class GPUScheduler:
                     retry_count=str(retry_count),
                 )
         finally:
-            # Release GPU (unless already released in retry path)
-            # NOTE: Check ownership inside lock, but call release_gpu OUTSIDE
-            # lock to avoid deadlock (release_gpu also acquires self.lock)
-            should_release = False
-            with self.lock:
-                if self.gpu_config[gpu_id]["current_job"] == job_id:
-                    should_release = True
-            if should_release:
-                self.release_gpu(gpu_id, job_id)
+            # Release GPU — but SKIP if retry path already released it.
+            # (Python always runs finally even after return, so without this flag
+            #  the GPU would get double-released and appear FREE while retry runs)
+            if not _released_for_retry:
+                should_release = False
+                with self.lock:
+                    if self.gpu_config[gpu_id]["current_job"] == job_id:
+                        should_release = True
+                if should_release:
+                    self.release_gpu(gpu_id, job_id)
 
     # ── Redis Helpers ────────────────────────────────────────────────
 
@@ -463,6 +462,7 @@ class GPUScheduler:
             jobs.append({
                 "job_id": jid,
                 "status": job_data.get("status", "unknown"),
+                "model": job_data.get("model"),
                 "prompt": job_data.get("prompt", "")[:100],
                 "created_at": job_data.get("created_at"),
                 "gpu_id": job_data.get("gpu_id"),

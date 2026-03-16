@@ -54,7 +54,8 @@ class GenerateRequest(BaseModel):
     resolution: str = "1280x720"
     video_length: int = 361
     seed: int = -1
-    steps: int = 8
+    steps: int = -1
+    model: str = "ltx2_distilled"  # model key from MODEL_TEMPLATES
     loras: Optional[Dict[str, float]] = None
     settings_override: Optional[Dict] = None
     webhook_url: Optional[str] = ""
@@ -80,6 +81,7 @@ class JobStatus(BaseModel):
     status: str
     prompt: str = ""
     resolution: str = ""
+    model: Optional[str] = None
     output_file: Optional[str] = None
     error: Optional[str] = None
     gpu_id: Optional[str] = None
@@ -98,7 +100,7 @@ def create_job(request: Request, req: GenerateRequest):
     job_id = f"job_{int(time.time())}_{os.urandom(4).hex()}"
     client_ip = request.client.host if request.client else "unknown"
 
-    logger.info(f"New job {job_id} from {client_ip}: {req.prompt[:80]}...")
+    logger.info(f"New job {job_id} from {client_ip}: model={req.model} prompt={req.prompt[:80]}...")
 
     # Filter LoRAs
     available_loras = client.get_available_loras()
@@ -118,6 +120,7 @@ def create_job(request: Request, req: GenerateRequest):
         video_length=req.video_length,
         seed=req.seed,
         steps=req.steps,
+        model=req.model,
         loras=filtered_loras,
         settings_override=req.settings_override,
         webhook_url=req.webhook_url or "",
@@ -169,6 +172,7 @@ def get_status(job_id: str):
         status=job.get("status", "unknown"),
         prompt=job.get("prompt", ""),
         resolution=job.get("resolution", ""),
+        model=job.get("model"),
         output_file=job.get("output_file"),
         error=job.get("error"),
         gpu_id=job.get("gpu_id"),
@@ -361,6 +365,22 @@ def list_loras():
         return {"loras": loras, "count": len(loras)}
     except Exception as e:
         return {"loras": [], "error": str(e)}
+
+
+@app.get("/models")
+def list_models():
+    """List all available model keys with labels and default settings."""
+    from wan2gp_client import MODEL_TEMPLATES
+    models = [
+        {
+            "key": key,
+            "label": cfg["label"],
+            "base_model_type": cfg["base_model_type"],
+            "default_steps": cfg.get("default_steps", 30),
+        }
+        for key, cfg in MODEL_TEMPLATES.items()
+    ]
+    return {"models": models, "count": len(models)}
 
 
 @app.get("/health")

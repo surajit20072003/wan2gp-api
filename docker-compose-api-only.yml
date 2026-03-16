@@ -1,0 +1,78 @@
+version: '3.8'
+
+# Minimal stack: Redis + API only (no GPU containers)
+# GPU containers (wan2gp-gpu0/1/2) start honge baad mein
+# jab wan2gp-local Docker image build ho jaye.
+
+networks:
+  wan2gp_network:
+    driver: bridge
+
+volumes:
+  redis-data:
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: wan2gp-redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - wan2gp_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  api-server:
+    build: .
+    container_name: wan2gp-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      # GPU 0 container config
+      - WAN2GP_CONTAINER_0=wan2gp-gpu0
+      - WAN2GP_OUTPUTS_DIR_0=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR_0=/nvme0n1-disk/wan2gp_data/gpu0/settings
+      # GPU 1 container config
+      - WAN2GP_CONTAINER_1=wan2gp-gpu1
+      - WAN2GP_OUTPUTS_DIR_1=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR_1=/nvme0n1-disk/wan2gp_data/gpu1/settings
+      # GPU 2 container config
+      - WAN2GP_CONTAINER_2=wan2gp-gpu2
+      - WAN2GP_OUTPUTS_DIR_2=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR_2=/nvme0n1-disk/wan2gp_data/gpu2/settings
+      - WAN2GP_UPLOADS_DIR=/nvme0n1-disk/wan2gp_data/uploads
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /nvme0n1-disk/wan2gp_data/outputs:/nvme0n1-disk/wan2gp_data/outputs
+      - /nvme0n1-disk/wan2gp_data/gpu0/settings:/nvme0n1-disk/wan2gp_data/gpu0/settings
+      - /nvme0n1-disk/wan2gp_data/gpu1/settings:/nvme0n1-disk/wan2gp_data/gpu1/settings
+      - /nvme0n1-disk/wan2gp_data/gpu2/settings:/nvme0n1-disk/wan2gp_data/gpu2/settings
+      - /nvme0n1-disk/wan2gp_data/uploads:/nvme0n1-disk/wan2gp_data/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - wan2gp_network
+    command: >
+      uvicorn api_server:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 15s

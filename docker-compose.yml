@@ -5,7 +5,7 @@ services:
     image: redis:7-alpine
     container_name: wan2gp-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -15,6 +15,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    networks:
+      - wan2gp-network
 
   api-server:
     build: .
@@ -22,15 +24,22 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - /nvme0n1-disk/test_wan2gp/outputs:/workspace/outputs:ro
-      - /nvme0n1-disk/test_wan2gp/settings:/workspace/settings
+      # Mount per-GPU settings dirs (same host paths that GPU containers mount)
+      - /nvme0n1-disk/wan2gp_data/gpu0/settings:/nvme0n1-disk/wan2gp_data/gpu0/settings
+      - /nvme0n1-disk/wan2gp_data/gpu1/settings:/nvme0n1-disk/wan2gp_data/gpu1/settings
+      - /nvme0n1-disk/wan2gp_data/gpu2/settings:/nvme0n1-disk/wan2gp_data/gpu2/settings
+      # Shared outputs (read-only for downloads)
+      - /nvme0n1-disk/wan2gp_data/outputs:/nvme0n1-disk/wan2gp_data/outputs:ro
+      # Uploads staging dir
+      - /nvme0n1-disk/wan2gp_data/uploads:/nvme0n1-disk/wan2gp_data/uploads
+      # Docker socket for docker exec
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
-      - WAN2GP_OUTPUTS_DIR=/workspace/outputs
-      - WAN2GP_SETTINGS_DIR=/workspace/settings
+      - WAN2GP_OUTPUTS_DIR=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_UPLOADS_DIR=/nvme0n1-disk/wan2gp_data/uploads
     depends_on:
       redis:
         condition: service_healthy

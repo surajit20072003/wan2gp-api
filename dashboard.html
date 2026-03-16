@@ -216,6 +216,24 @@
             resize: vertical;
         }
 
+        select option,
+        select optgroup {
+            background: #1a1a2e;
+            color: var(--text);
+        }
+
+        select option:checked {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        select optgroup {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text-dim);
+            padding: 4px 0;
+        }
+
         textarea:focus,
         input:focus,
         select:focus {
@@ -748,6 +766,36 @@
                         placeholder="Describe your video in detail... e.g. A cinematic drone shot of a futuristic cyberpunk city at night with neon lights reflecting off wet streets, flying cars passing between skyscrapers, 8K resolution, highly detailed"></textarea>
                 </div>
 
+                <div class="form-group">
+                    <label>🤖 AI Model</label>
+                    <select id="model-select" onchange="onModelChange()">
+                        <optgroup label="⚡ LTX Video (Fastest)">
+                            <option value="ltx2_distilled" data-steps="8" data-max="20">LTX-2 19B Distilled — 8 steps,
+                                fastest</option>
+                        </optgroup>
+                        <optgroup label="🎬 WAN 2.1">
+                            <option value="wan21_t2v" data-steps="30" data-max="50">WAN 2.1 Text-to-Video 14B</option>
+                            <option value="wan21_i2v_480p" data-steps="30" data-max="50">WAN 2.1 Image-to-Video 480p
+                            </option>
+                        </optgroup>
+                        <optgroup label="✨ WAN 2.2 (Newer)">
+                            <option value="wan22_t2v" data-steps="30" data-max="50">WAN 2.2 Text-to-Video 14B</option>
+                            <option value="wan22_i2v" data-steps="30" data-max="50">WAN 2.2 Image-to-Video 14B</option>
+                            <option value="wan22_t2v_5b" data-steps="30" data-max="50">WAN 2.2 T+I to Video 5B</option>
+                            <option value="wan22_vace" data-steps="30" data-max="50">WAN 2.2 VACE 14B (ControlNet)
+                            </option>
+                        </optgroup>
+                        <optgroup label="🔥 HunyuanVideo">
+                            <option value="hunyuan_t2v" data-steps="50" data-max="80">HunyuanVideo T2V 720p</option>
+                            <option value="hunyuan_i2v" data-steps="50" data-max="80">HunyuanVideo I2V 720p</option>
+                            <option value="hunyuan_1_5_t2v" data-steps="20" data-max="40">HunyuanVideo 1.5 T2V 720p
+                            </option>
+                            <option value="hunyuan_1_5_i2v" data-steps="20" data-max="40">HunyuanVideo 1.5 I2V 720p
+                            </option>
+                        </optgroup>
+                    </select>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Resolution</label>
@@ -763,7 +811,7 @@
                         <select id="duration">
                             <option value="81">~5 seconds (81 frames)</option>
                             <option value="161">~10 seconds (161 frames)</option>
-                            <option value="361">~15 seconds (361 frames)</option>
+                            <option value="361" selected>~15 seconds (361 frames)</option>
                             <option value="481">~20 seconds (481 frames)</option>
                         </select>
                     </div>
@@ -772,7 +820,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Inference Steps: <span id="steps-val">8</span></label>
-                        <input type="range" id="steps" min="4" max="30" value="8"
+                        <input type="range" id="steps" min="4" max="20" value="8"
                             oninput="document.getElementById('steps-val').textContent=this.value">
                     </div>
                     <div class="form-group">
@@ -802,6 +850,36 @@
                     <label>Prompt</label>
                     <textarea id="img-prompt" rows="3"
                         placeholder="Describe how the image animates... e.g. The woman gently smiles, wind blowing her hair, cinematic slow motion"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>🤖 AI Model</label>
+                    <select id="img-model-select" onchange="onImgModelChange()">
+                        <optgroup label="⚡ LTX Video (Fastest)">
+                            <option value="ltx2_distilled" data-steps="8" data-max="20">LTX-2 19B Distilled — 8 steps,
+                                fastest</option>
+                        </optgroup>
+                        <optgroup label="🎬 WAN 2.1">
+                            <option value="wan21_t2v" data-steps="30" data-max="50">WAN 2.1 Text-to-Video 14B</option>
+                            <option value="wan21_i2v_480p" data-steps="30" data-max="50">WAN 2.1 Image-to-Video 480p
+                            </option>
+                        </optgroup>
+                        <optgroup label="✨ WAN 2.2 (Newer)">
+                            <option value="wan22_t2v" data-steps="30" data-max="50">WAN 2.2 Text-to-Video 14B</option>
+                            <option value="wan22_i2v" data-steps="30" data-max="50">WAN 2.2 Image-to-Video 14B</option>
+                            <option value="wan22_t2v_5b" data-steps="30" data-max="50">WAN 2.2 T+I to Video 5B</option>
+                            <option value="wan22_vace" data-steps="30" data-max="50">WAN 2.2 VACE 14B (ControlNet)
+                            </option>
+                        </optgroup>
+                        <optgroup label="🔥 HunyuanVideo">
+                            <option value="hunyuan_t2v" data-steps="50" data-max="80">HunyuanVideo T2V 720p</option>
+                            <option value="hunyuan_i2v" data-steps="50" data-max="80">HunyuanVideo I2V 720p</option>
+                            <option value="hunyuan_1_5_t2v" data-steps="20" data-max="40">HunyuanVideo 1.5 T2V 720p
+                            </option>
+                            <option value="hunyuan_1_5_i2v" data-steps="20" data-max="40">HunyuanVideo 1.5 I2V 720p
+                            </option>
+                        </optgroup>
+                    </select>
                 </div>
 
                 <!-- File Upload Zones -->
@@ -910,6 +988,7 @@
                             <tr>
                                 <th>Job ID</th>
                                 <th>Status</th>
+                                <th>Model</th>
                                 <th>GPU</th>
                                 <th>Prompt</th>
                                 <th>Duration</th>
@@ -918,7 +997,7 @@
                         </thead>
                         <tbody id="history-tbody">
                             <tr>
-                                <td colspan="6" style="text-align:center; color:var(--text-dim); padding:40px;">Loading
+                                <td colspan="7" style="text-align:center; color:var(--text-dim); padding:40px;">Loading
                                     jobs...</td>
                             </tr>
                         </tbody>
@@ -944,6 +1023,24 @@
         const API_BASE = `${window.location.protocol}//${window.location.host}`;
         let activeJobs = []; // jobs currently being tracked on the Generate tab
         let allJobs = [];    // history data
+
+        const MODEL_LABELS = {
+            "ltx2_distilled": "LTX-2 19B Distilled",
+            "wan21_t2v": "WAN 2.1 T2V 14B",
+            "wan21_i2v_480p": "WAN 2.1 I2V 480p",
+            "wan22_t2v": "WAN 2.2 T2V 14B",
+            "wan22_i2v": "WAN 2.2 I2V 14B",
+            "wan22_t2v_5b": "WAN 2.2 T2V 5B",
+            "wan22_vace": "WAN 2.2 VACE 14B",
+            "hunyuan_t2v": "HunyuanVideo T2V",
+            "hunyuan_i2v": "HunyuanVideo I2V",
+            "hunyuan_1_5_t2v": "Hunyuan 1.5 T2V",
+            "hunyuan_1_5_i2v": "Hunyuan 1.5 I2V",
+        };
+
+        function getModelLabel(key) {
+            return MODEL_LABELS[key] || key || '—';
+        }
 
         // ── Init ────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', () => {
@@ -1027,6 +1124,7 @@
 
             const payload = {
                 prompt,
+                model: document.getElementById('img-model-select').value,
                 resolution: document.getElementById('img-resolution').value,
                 video_length: parseInt(document.getElementById('img-duration').value),
                 steps: parseInt(document.getElementById('img-steps').value),
@@ -1049,6 +1147,7 @@
                     job_id: data.job_id,
                     status: data.status,
                     prompt: prompt.substring(0, 100),
+                    model: payload.model,
                     resolution: payload.resolution,
                     gpu_id: data.gpu_id,
                     submitted_at: Date.now(),
@@ -1075,7 +1174,12 @@
                 const icon = { queued: '⏳', processing: '🎬', running: '🎬', completed: '✅', failed: '❌', error: '❌' }[job.status] || '❓';
                 let html = `<div class="active-job">
                     <h3>${icon} ${job.job_id} <span class="status-pill ${job.status}" style="margin-left:auto">${job.status.toUpperCase()}</span></h3>
-                    <div class="job-meta"><span>🖼️ ${job.mode}</span><span>⏱️ ${elapsed}</span><span>🖥️ GPU ${job.gpu_id ?? '—'}</span></div>`;
+                    <div class="job-meta">
+                        <span>🤖 ${getModelLabel(job.model)}</span>
+                        <span>🖼️ ${job.mode}</span>
+                        <span>⏱️ ${elapsed}</span>
+                        <span>🖥️ GPU ${job.gpu_id ?? '—'}</span>
+                    </div>`;
                 if (['running', 'processing', 'queued'].includes(job.status)) {
                     html += `<div class="progress-bar-bg"><div class="progress-bar-fill indeterminate"></div></div>`;
                 }
@@ -1105,6 +1209,7 @@
                     const res = await fetch(`${API_BASE}/status/${job.job_id}`);
                     const data = await res.json();
                     job.status = data.status; job.gpu_id = data.gpu_id;
+                    job.model = data.model;
                     job.output_file = data.output_file; job.error = data.error;
                     job.duration_seconds = data.duration_seconds;
                 } catch (e) { }
@@ -1183,6 +1288,7 @@
 
             const payload = {
                 prompt: prompt,
+                model: document.getElementById('model-select').value,
                 resolution: document.getElementById('resolution').value,
                 video_length: parseInt(document.getElementById('duration').value),
                 steps: parseInt(document.getElementById('steps').value),
@@ -1208,6 +1314,7 @@
                     job_id: data.job_id,
                     status: data.status,
                     prompt: prompt.substring(0, 120),
+                    model: payload.model,
                     resolution: payload.resolution,
                     gpu_id: data.gpu_id,
                     submitted_at: Date.now(),
@@ -1226,6 +1333,29 @@
             }
         }
 
+        // ── Model Dropdown ───────────────────────────────────────────
+        function onModelChange() {
+            const sel = document.getElementById('model-select');
+            const opt = sel.options[sel.selectedIndex];
+            const defaultSteps = parseInt(opt.dataset.steps || '30');
+            const maxSteps = parseInt(opt.dataset.max || '50');
+            const stepsInput = document.getElementById('steps');
+            stepsInput.max = maxSteps;
+            stepsInput.value = defaultSteps;
+            document.getElementById('steps-val').textContent = defaultSteps;
+        }
+
+        function onImgModelChange() {
+            const sel = document.getElementById('img-model-select');
+            const opt = sel.options[sel.selectedIndex];
+            const defaultSteps = parseInt(opt.dataset.steps || '30');
+            const maxSteps = parseInt(opt.dataset.max || '50');
+            const stepsInput = document.getElementById('img-steps');
+            stepsInput.max = maxSteps;
+            stepsInput.value = defaultSteps;
+            document.getElementById('img-steps-val').textContent = defaultSteps;
+        }
+
         // ── Active Job Polling ──────────────────────────────────────
         async function pollActiveJobs() {
             if (activeJobs.length === 0) return;
@@ -1239,6 +1369,7 @@
                     if (data.status !== job.status) changed = true;
                     job.status = data.status;
                     job.gpu_id = data.gpu_id;
+                    job.model = data.model;
                     job.output_file = data.output_file;
                     job.error = data.error;
                     job.duration_seconds = data.duration_seconds;
@@ -1274,6 +1405,7 @@
                             <span>📝 ${job.prompt}...</span>
                         </div>
                         <div class="job-meta" style="margin-top:8px">
+                            <span>🤖 ${getModelLabel(job.model)}</span>
                             <span>🖥️ GPU ${job.gpu_id ?? '—'}</span>
                             <span>📐 ${job.resolution}</span>
                             <span>⏱️ ${elapsed}</span>
@@ -1366,13 +1498,14 @@
                 // Table
                 const tbody = document.getElementById('history-tbody');
                 if (allJobs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:40px">No jobs yet</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:40px">No jobs yet</td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = allJobs.map(job => {
                     const statusClass = job.status || 'unknown';
                     const gpuLabel = job.gpu_id !== null && job.gpu_id !== undefined ? `GPU ${job.gpu_id}` : '—';
+                    const modelLabel = getModelLabel(job.model);
                     const prompt = (job.prompt || '').substring(0, 60);
                     const created = job.created_at ? new Date(parseFloat(job.created_at) * 1000).toLocaleString() : '—';
 
@@ -1386,6 +1519,7 @@
                         <tr onclick="showJobDetail('${job.job_id}')">
                             <td><code style="color:var(--accent);font-size:11px">${job.job_id}</code></td>
                             <td><span class="status-pill ${statusClass}">${statusClass.toUpperCase()}</span></td>
+                            <td style="font-size:11px;color:var(--text-dim)">${modelLabel}</td>
                             <td>${gpuLabel}</td>
                             <td><div class="prompt-preview">${prompt}</div></td>
                             <td style="font-size:12px;color:var(--text-dim)">${created}</td>
@@ -1428,6 +1562,7 @@
 
                     <div class="detail-row"><div class="detail-label">Job ID</div><div class="detail-value"><code>${job.job_id}</code></div></div>
                     <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value"><span class="status-pill ${statusClass}">${statusClass.toUpperCase()}</span></div></div>
+                    <div class="detail-row"><div class="detail-label">Model</div><div class="detail-value">${getModelLabel(job.model)}</div></div>
                     <div class="detail-row"><div class="detail-label">GPU</div><div class="detail-value">${job.gpu_id !== null ? 'GPU ' + job.gpu_id : '—'}</div></div>
                     <div class="detail-row"><div class="detail-label">Resolution</div><div class="detail-value">${job.resolution || '—'}</div></div>
                     <div class="detail-row"><div class="detail-label">Created</div><div class="detail-value">${created}</div></div>
