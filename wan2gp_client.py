@@ -3,6 +3,7 @@ Wan2GP Client for multi-container Docker execution.
 Supports 3 GPU containers (wan2gp-gpu0, wan2gp-gpu1, wan2gp-gpu2).
 Each container has its own settings and outputs directories.
 """
+
 import subprocess
 import shutil
 import json
@@ -15,7 +16,9 @@ from typing import Dict, Optional
 import logging
 
 # Staging dir where uploaded files are stored before being copied to GPU settings dir
-UPLOADS_STAGING_DIR = os.getenv("WAN2GP_UPLOADS_DIR", "/nvme0n1-disk/wan2gp_data/uploads")
+UPLOADS_STAGING_DIR = os.getenv(
+    "WAN2GP_UPLOADS_DIR", "/nvme0n1-disk/wan2gp_data/uploads"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,23 @@ logger = logging.getLogger(__name__)
 # model_filename may be a HuggingFace URL (auto-downloaded on first use)
 # or a local path inside the container under /workspace/ckpts/.
 MODEL_TEMPLATES = {
+    # ── LTX 2.3 (Latest - 22B distilled) ───────────────────────────────
+    "ltx23_distilled_q6": {
+        "label": "LTX-2.3 22B Distilled Q6 (8 steps, best quality)",
+        "base_model_type": "ltx2_22B",
+        "model_type": "ltx2_22B_distilled",
+        "model_filename": "ltx-2.3-22b-distilled-Q6_K_light.gguf",
+        "default_steps": 8,
+        "ltx2_pipeline": "distilled",
+    },
+    "ltx23_distilled_q4": {
+        "label": "LTX-2.3 22B Distilled Q4 (8 steps, low VRAM)",
+        "base_model_type": "ltx2_22B",
+        "model_type": "ltx2_22B_distilled",
+        "model_filename": "ltx-2.3-22b-distilled-Q4_K_M_light.gguf",
+        "default_steps": 8,
+        "ltx2_pipeline": "distilled",
+    },
     # ── LTX Video (current default, fastest) ──────────────────────────
     "ltx2_distilled": {
         "label": "LTX-2 19B Distilled (8 steps, fastest)",
@@ -174,7 +194,7 @@ class Wan2GPClient:
             "self_refiner_certain_percentage": 0.999,
             "output_filename": "",
             "mode": "",
-            "activated_loras": []
+            "activated_loras": [],
         }
 
     def _get_template(self, model_key: str) -> Dict:
@@ -187,21 +207,31 @@ class Wan2GPClient:
 
         model_cfg = MODEL_TEMPLATES.get(model_key)
         if model_cfg is None:
-            logger.warning(f"⚠️ Unknown model key '{model_key}', falling back to ltx2_distilled")
+            logger.warning(
+                f"⚠️ Unknown model key '{model_key}', falling back to ltx2_distilled"
+            )
             model_cfg = MODEL_TEMPLATES["ltx2_distilled"]
 
         # Apply model-specific overrides
-        base.update({
-            "type": f"WanGP v10.952 by DeepBeepMeep - {model_cfg['label']}",
-            "base_model_type": model_cfg["base_model_type"],
-            "model_type": model_cfg["model_type"],
-            "model_filename": model_cfg["model_filename"],
-            "num_inference_steps": model_cfg.get("default_steps", 30),
-        })
+        base.update(
+            {
+                "type": f"WanGP v10.952 by DeepBeepMeep - {model_cfg['label']}",
+                "base_model_type": model_cfg["base_model_type"],
+                "model_type": model_cfg["model_type"],
+                "model_filename": model_cfg["model_filename"],
+                "num_inference_steps": model_cfg.get("default_steps", 30),
+            }
+        )
 
         # Optional per-model extras (guidance_scale, image_prompt_type, etc.)
-        for extra_key in ["guidance_scale", "embedded_guidance_scale", "image_prompt_type",
-                          "audio_prompt_type", "video_prompt_type", "flow_shift"]:
+        for extra_key in [
+            "guidance_scale",
+            "embedded_guidance_scale",
+            "image_prompt_type",
+            "audio_prompt_type",
+            "video_prompt_type",
+            "flow_shift",
+        ]:
             if extra_key in model_cfg:
                 base[extra_key] = model_cfg[extra_key]
 
@@ -216,9 +246,14 @@ class Wan2GPClient:
         logger.info(f"Executing: {full_cmd}")
 
         # Use tempfiles to avoid pipe buffer deadlock with large output
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='_stdout.log', delete=True) as stdout_f, \
-             tempfile.NamedTemporaryFile(mode='w+', suffix='_stderr.log', delete=True) as stderr_f:
-
+        with (
+            tempfile.NamedTemporaryFile(
+                mode="w+", suffix="_stdout.log", delete=True
+            ) as stdout_f,
+            tempfile.NamedTemporaryFile(
+                mode="w+", suffix="_stderr.log", delete=True
+            ) as stderr_f,
+        ):
             process = subprocess.Popen(
                 full_cmd,
                 shell=True,
@@ -242,7 +277,9 @@ class Wan2GPClient:
 
             logger.info(f"Command exited with code {exit_code}")
             if exit_code != 0:
-                logger.warning(f"Non-zero exit code {exit_code}. stderr: {stderr[-500:]}")
+                logger.warning(
+                    f"Non-zero exit code {exit_code}. stderr: {stderr[-500:]}"
+                )
 
             return stdout, stderr
 
@@ -317,14 +354,16 @@ class Wan2GPClient:
         model_cfg = MODEL_TEMPLATES.get(model, MODEL_TEMPLATES["ltx2_distilled"])
         effective_steps = steps if steps > 0 else model_cfg.get("default_steps", 30)
 
-        settings.update({
-            "prompt": prompt,
-            "resolution": resolution,
-            "video_length": video_length,
-            "seed": seed if seed > 0 else -1,
-            "num_inference_steps": effective_steps,
-            "output_filename": output_filename or job_id,
-        })
+        settings.update(
+            {
+                "prompt": prompt,
+                "resolution": resolution,
+                "video_length": video_length,
+                "seed": seed if seed > 0 else -1,
+                "num_inference_steps": effective_steps,
+                "output_filename": output_filename or job_id,
+            }
+        )
 
         # image_prompt_type: explicit caller value overrides model template default
         if image_prompt_type:
@@ -332,7 +371,9 @@ class Wan2GPClient:
         if audio_prompt_type:
             settings["audio_prompt_type"] = audio_prompt_type
 
-        logger.info(f"📦 Model={model} base_model_type={settings.get('base_model_type')} steps={effective_steps}")
+        logger.info(
+            f"📦 Model={model} base_model_type={settings.get('base_model_type')} steps={effective_steps}"
+        )
 
         if loras:
             if isinstance(loras, dict):
@@ -351,14 +392,18 @@ class Wan2GPClient:
         # container can see them at /workspace/settings/<filename>
 
         start_file = self._copy_media_to_settings(image_start_token, settings_dir)
-        end_file   = self._copy_media_to_settings(image_end_token, settings_dir)
+        end_file = self._copy_media_to_settings(image_end_token, settings_dir)
         audio_file = self._copy_media_to_settings(audio_token, settings_dir)
 
         if start_file:
             settings["image_start"] = f"/workspace/settings/{start_file}"
             # Auto-set image_prompt_type: S (start only) or SE (start+end)
-            settings["image_prompt_type"] = image_prompt_type if image_prompt_type else ("SE" if end_file else "S")
-            logger.info(f"🖼️  image_start={settings['image_start']} image_prompt_type={settings['image_prompt_type']}")
+            settings["image_prompt_type"] = (
+                image_prompt_type if image_prompt_type else ("SE" if end_file else "S")
+            )
+            logger.info(
+                f"🖼️  image_start={settings['image_start']} image_prompt_type={settings['image_prompt_type']}"
+            )
 
         if end_file:
             settings["image_end"] = f"/workspace/settings/{end_file}"
@@ -366,14 +411,18 @@ class Wan2GPClient:
 
         if audio_file:
             settings["audio_guide"] = f"/workspace/settings/{audio_file}"
-            settings["audio_prompt_type"] = audio_prompt_type if audio_prompt_type else "A"
-            logger.info(f"🎵 audio_guide={settings['audio_guide']} audio_prompt_type={settings['audio_prompt_type']}")
+            settings["audio_prompt_type"] = (
+                audio_prompt_type if audio_prompt_type else "A"
+            )
+            logger.info(
+                f"🎵 audio_guide={settings['audio_guide']} audio_prompt_type={settings['audio_prompt_type']}"
+            )
 
         # Write settings file
         settings_filename = f"api_job_{job_id}.json"
         settings_path = Path(settings_dir) / settings_filename
 
-        with open(settings_path, 'w') as f:
+        with open(settings_path, "w") as f:
             json.dump(settings, indent=2, fp=f)
 
         logger.info(f"Settings written to: {settings_path}")
@@ -399,16 +448,14 @@ class Wan2GPClient:
             # Check for REAL generation errors in output
             # Must be actual Python exceptions, NOT HuggingFace tokenizer warnings
             combined_out = stdout + stderr
-            real_error = (
-                "Queue completed: 0/" in combined_out and (
-                    "Traceback (most recent call last)" in combined_out or
-                    "TypeError:" in combined_out or
-                    "RuntimeError:" in combined_out or
-                    "ValueError:" in combined_out or
-                    "AttributeError:" in combined_out or
-                    "CUDA out of memory" in combined_out or
-                    "AssertionError:" in combined_out
-                )
+            real_error = "Queue completed: 0/" in combined_out and (
+                "Traceback (most recent call last)" in combined_out
+                or "TypeError:" in combined_out
+                or "RuntimeError:" in combined_out
+                or "ValueError:" in combined_out
+                or "AttributeError:" in combined_out
+                or "CUDA out of memory" in combined_out
+                or "AssertionError:" in combined_out
             )
 
             # Parse output filename from logs
@@ -420,13 +467,17 @@ class Wan2GPClient:
                     try:
                         new_outputs = set(os.listdir(outputs_dir)) - existing_outputs
                         mp4_files = sorted(
-                            [f for f in new_outputs if f.endswith('.mp4')],
-                            key=lambda f: os.path.getmtime(os.path.join(outputs_dir, f)),
-                            reverse=True
+                            [f for f in new_outputs if f.endswith(".mp4")],
+                            key=lambda f: os.path.getmtime(
+                                os.path.join(outputs_dir, f)
+                            ),
+                            reverse=True,
                         )
                         if mp4_files:
                             output_file = mp4_files[0]
-                            logger.info(f"Detected new output file (scan attempt {attempt+1}): {output_file}")
+                            logger.info(
+                                f"Detected new output file (scan attempt {attempt + 1}): {output_file}"
+                            )
                             break
                     except OSError:
                         pass
@@ -478,31 +529,33 @@ class Wan2GPClient:
         """Extract output filename from generation logs."""
         combined = stdout + stderr
 
-        for line in combined.split('\n'):
-            if 'saved video:' in line.lower() or 'output:' in line.lower():
-                if '.mp4' in line:
-                    parts = line.split('/')
+        for line in combined.split("\n"):
+            if "saved video:" in line.lower() or "output:" in line.lower():
+                if ".mp4" in line:
+                    parts = line.split("/")
                     for part in reversed(parts):
-                        if '.mp4' in part:
+                        if ".mp4" in part:
                             return part.strip()
 
-        for line in combined.split('\n'):
-            if '.mp4' in line:
+        for line in combined.split("\n"):
+            if ".mp4" in line:
                 words = line.split()
                 for word in words:
-                    if '.mp4' in word:
-                        return word.strip().rstrip(',').rstrip('.')
+                    if ".mp4" in word:
+                        return word.strip().rstrip(",").rstrip(".")
 
         return None
 
-    def list_outputs(self, container_name: str = "wan2gp-gpu0", limit: int = 20) -> list[str]:
+    def list_outputs(
+        self, container_name: str = "wan2gp-gpu0", limit: int = 20
+    ) -> list[str]:
         """List recent output files from a specific container."""
         try:
             stdout, _ = self._docker_exec(
                 f"ls -t /workspace/outputs/*.mp4 | head -{limit}",
                 container_name,
             )
-            files = [f.split('/')[-1] for f in stdout.strip().split('\n') if f]
+            files = [f.split("/")[-1] for f in stdout.strip().split("\n") if f]
             return files
         except:
             return []
@@ -511,7 +564,9 @@ class Wan2GPClient:
         """Get full host path to output file.
         All GPU containers share a single outputs directory.
         """
-        outputs_dir = os.getenv("WAN2GP_OUTPUTS_DIR", "/nvme0n1-disk/wan2gp_data/outputs")
+        outputs_dir = os.getenv(
+            "WAN2GP_OUTPUTS_DIR", "/nvme0n1-disk/wan2gp_data/outputs"
+        )
         return Path(outputs_dir) / filename
 
     def check_container_health(self, container_name: str) -> bool:
@@ -536,7 +591,11 @@ class Wan2GPClient:
                 container_name,
             )
             # Filter for .safetensors files
-            loras = [f.strip() for f in stdout.strip().split('\\n') if f.strip().endswith('.safetensors')]
+            loras = [
+                f.strip()
+                for f in stdout.strip().split("\\n")
+                if f.strip().endswith(".safetensors")
+            ]
             return loras
         except Exception as e:
             logger.error(f"Failed to list LoRAs in {container_name}: {e}")

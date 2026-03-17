@@ -17,7 +17,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY gpu_scheduler.py wan2gp_client.py api_server.py ./
+COPY gpu_scheduler.py wan2gp_client.py api_server.py celery_app.py ./
 # Copy optional HTML dashboard files (if they exist)
 COPY *.html ./
 

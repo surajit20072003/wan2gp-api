@@ -773,6 +773,10 @@
                             <option value="ltx2_distilled" data-steps="8" data-max="20">LTX-2 19B Distilled — 8 steps,
                                 fastest</option>
                         </optgroup>
+                        <optgroup label="🎥 LTX Video 2.3 (Newer)">
+                            <option value="ltx23_distilled_q6" data-steps="8" data-max="20" selected>LTX-2.3 22B Distilled Q6 — 8 steps</option>
+                            <option value="ltx23_distilled_q4" data-steps="8" data-max="20">LTX-2.3 22B Distilled Q4 — 8 steps (Low VRAM)</option>
+                        </optgroup>
                         <optgroup label="🎬 WAN 2.1">
                             <option value="wan21_t2v" data-steps="30" data-max="50">WAN 2.1 Text-to-Video 14B</option>
                             <option value="wan21_i2v_480p" data-steps="30" data-max="50">WAN 2.1 Image-to-Video 480p
@@ -858,6 +862,10 @@
                         <optgroup label="⚡ LTX Video (Fastest)">
                             <option value="ltx2_distilled" data-steps="8" data-max="20">LTX-2 19B Distilled — 8 steps,
                                 fastest</option>
+                        </optgroup>
+                        <optgroup label="🎥 LTX Video 2.3 (Newer)">
+                            <option value="ltx23_distilled_q6" data-steps="8" data-max="20" selected>LTX-2.3 22B Distilled Q6 — 8 steps</option>
+                            <option value="ltx23_distilled_q4" data-steps="8" data-max="20">LTX-2.3 22B Distilled Q4 — 8 steps (Low VRAM)</option>
                         </optgroup>
                         <optgroup label="🎬 WAN 2.1">
                             <option value="wan21_t2v" data-steps="30" data-max="50">WAN 2.1 Text-to-Video 14B</option>
@@ -1026,6 +1034,8 @@
 
         const MODEL_LABELS = {
             "ltx2_distilled": "LTX-2 19B Distilled",
+            "ltx23_distilled_q6": "LTX-2.3 22B Distilled Q6",
+            "ltx23_distilled_q4": "LTX-2.3 22B Distilled Q4",
             "wan21_t2v": "WAN 2.1 T2V 14B",
             "wan21_i2v_480p": "WAN 2.1 I2V 480p",
             "wan22_t2v": "WAN 2.2 T2V 14B",
