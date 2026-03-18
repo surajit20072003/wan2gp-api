@@ -201,16 +201,16 @@ class Wan2GPClient:
         """
         Return full settings dict for a given model key.
         Starts from the base template and overlays model-specific fields.
-        Falls back to ltx2_distilled if key is unknown.
+        Falls back to ltx23_distilled_q6 if key is unknown.
         """
         base = self._get_default_template()
 
         model_cfg = MODEL_TEMPLATES.get(model_key)
         if model_cfg is None:
             logger.warning(
-                f"⚠️ Unknown model key '{model_key}', falling back to ltx2_distilled"
+                f"⚠️ Unknown model key '{model_key}', falling back to ltx23_distilled_q6"
             )
-            model_cfg = MODEL_TEMPLATES["ltx2_distilled"]
+            model_cfg = MODEL_TEMPLATES["ltx23_distilled_q6"]
 
         # Apply model-specific overrides
         base.update(
@@ -311,7 +311,7 @@ class Wan2GPClient:
         video_length: int = 361,
         seed: int = -1,
         steps: int = -1,
-        model: str = "ltx2_distilled",
+        model: str = "ltx23_distilled_q6",
         loras: Optional[Dict[str, float]] = None,
         output_filename: str = "",
         settings_override: Optional[Dict] = None,
@@ -351,7 +351,7 @@ class Wan2GPClient:
             settings = self._get_template(model)
 
         # Use model's default steps when caller passes -1 (auto)
-        model_cfg = MODEL_TEMPLATES.get(model, MODEL_TEMPLATES["ltx2_distilled"])
+        model_cfg = MODEL_TEMPLATES.get(model, MODEL_TEMPLATES["ltx23_distilled_q6"])
         effective_steps = steps if steps > 0 else model_cfg.get("default_steps", 30)
 
         settings.update(

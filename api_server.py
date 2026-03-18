@@ -55,7 +55,7 @@ class GenerateRequest(BaseModel):
     video_length: int = 361
     seed: int = -1
     steps: int = -1
-    model: str = "ltx2_distilled"  # model key from MODEL_TEMPLATES
+    model: str = "ltx23_distilled_q6"  # model key from MODEL_TEMPLATES
     loras: Optional[Dict[str, float]] = None
     settings_override: Optional[Dict] = None
     webhook_url: Optional[str] = ""
