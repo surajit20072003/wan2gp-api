@@ -43,6 +43,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
+      - WAN2GP_API_KEY=${WAN2GP_API_KEY:-default-secret-key}
       # GPU 0 container config
       - WAN2GP_CONTAINER_0=wan2gp-gpu0
       - WAN2GP_OUTPUTS_DIR_0=/nvme0n1-disk/wan2gp_data/outputs

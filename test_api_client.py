@@ -5,13 +5,16 @@ Tests job submission, status tracking, and download.
 import requests
 import time
 import sys
+import os
 
 API_URL = "http://69.30.250.80:8000"
+API_KEY = os.getenv("WAN2GP_API_KEY", "mypassword1234")
+HEADERS = {"X-API-Key": API_KEY}
 
 def test_health():
     """Test health endpoint."""
     print("=== Testing Health ===")
-    response = requests.get(f"{API_URL}/health")
+    response = requests.get(f"{API_URL}/health", headers=HEADERS)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.json()}")
     return response.status_code == 200
@@ -19,7 +22,7 @@ def test_health():
 def test_list_loras():
     """Test LoRA listing."""
     print("\n=== Testing LoRA List ===")
-    response = requests.get(f"{API_URL}/loras")
+    response = requests.get(f"{API_URL}/loras", headers=HEADERS)
     print(f"LoRAs: {response.json()}")
     return response.status_code == 200
 
@@ -35,7 +38,7 @@ def test_submit_job():
         "loras": {"ltx-2-19b-ic-lora-detailer.safetensors": 0.8}
     }
     
-    response = requests.post(f"{API_URL}/generate", json=job_request)
+    response = requests.post(f"{API_URL}/generate", json=job_request, headers=HEADERS)
     print(f"Status: {response.status_code}")
     job_data = response.json()
     print(f"Job ID: {job_data['job_id']}")
@@ -56,7 +59,7 @@ def test_poll_status(job_id, timeout_minutes=30):
             print(f"Timeout after {timeout_minutes} minutes")
             return None
         
-        response = requests.get(f"{API_URL}/status/{job_id}")
+        response = requests.get(f"{API_URL}/status/{job_id}", headers=HEADERS)
         status_data = response.json()
         
         status = status_data['status']
@@ -76,7 +79,7 @@ def test_poll_status(job_id, timeout_minutes=30):
 def test_download(job_id):
     """Test video download."""
     print(f"\n=== Downloading Video for {job_id} ===")
-    response = requests.get(f"{API_URL}/download/{job_id}")
+    response = requests.get(f"{API_URL}/download/{job_id}", headers=HEADERS)
     
     if response.status_code == 200:
         filename = f"{job_id}.mp4"
@@ -92,7 +95,7 @@ def test_download(job_id):
 def test_queue_status():
     """Test queue status."""
     print("\n=== Testing Queue Status ===")
-    response = requests.get(f"{API_URL}/queue")
+    response = requests.get(f"{API_URL}/queue", headers=HEADERS)
     queue_data = response.json()
     print(f"Total Jobs: {queue_data['total_jobs']}")
     print(f"Queue Length: {queue_data['queue_length']}")
@@ -103,7 +106,7 @@ def test_queue_status():
 def test_list_jobs():
     """Test job listing."""
     print("\n=== Testing Job List ===")
-    response = requests.get(f"{API_URL}/jobs/list?limit=10")
+    response = requests.get(f"{API_URL}/jobs/list?limit=10", headers=HEADERS)
     jobs_data = response.json()
     print(f"Recent jobs: {len(jobs_data['jobs'])}")
     for job in jobs_data['jobs'][:5]:

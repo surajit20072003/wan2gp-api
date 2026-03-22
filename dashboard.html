@@ -774,8 +774,10 @@
                                 fastest</option>
                         </optgroup>
                         <optgroup label="🎥 LTX Video 2.3 (Newer)">
-                            <option value="ltx23_distilled_q6" data-steps="8" data-max="20" selected>LTX-2.3 22B Distilled Q6 — 8 steps</option>
-                            <option value="ltx23_distilled_q4" data-steps="8" data-max="20">LTX-2.3 22B Distilled Q4 — 8 steps (Low VRAM)</option>
+                            <option value="ltx23_distilled_q6" data-steps="8" data-max="20" selected>LTX-2.3 22B
+                                Distilled Q6 — 8 steps</option>
+                            <option value="ltx23_distilled_q4" data-steps="8" data-max="20">LTX-2.3 22B Distilled Q4 — 8
+                                steps (Low VRAM)</option>
                         </optgroup>
                         <optgroup label="🎬 WAN 2.1">
                             <option value="wan21_t2v" data-steps="30" data-max="50">WAN 2.1 Text-to-Video 14B</option>
@@ -864,8 +866,10 @@
                                 fastest</option>
                         </optgroup>
                         <optgroup label="🎥 LTX Video 2.3 (Newer)">
-                            <option value="ltx23_distilled_q6" data-steps="8" data-max="20" selected>LTX-2.3 22B Distilled Q6 — 8 steps</option>
-                            <option value="ltx23_distilled_q4" data-steps="8" data-max="20">LTX-2.3 22B Distilled Q4 — 8 steps (Low VRAM)</option>
+                            <option value="ltx23_distilled_q6" data-steps="8" data-max="20" selected>LTX-2.3 22B
+                                Distilled Q6 — 8 steps</option>
+                            <option value="ltx23_distilled_q4" data-steps="8" data-max="20">LTX-2.3 22B Distilled Q4 — 8
+                                steps (Low VRAM)</option>
                         </optgroup>
                         <optgroup label="🎬 WAN 2.1">
                             <option value="wan21_t2v" data-steps="30" data-max="50">WAN 2.1 Text-to-Video 14B</option>
@@ -1027,6 +1031,25 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // ── Security Setup ──────────────────────────────────────────
+        let apiKey = localStorage.getItem('wan2gp_api_key');
+        if (!apiKey) {
+            apiKey = prompt("Please enter the API Key to access Wan2GP Video Studio:");
+            if (apiKey) localStorage.setItem('wan2gp_api_key', apiKey);
+        }
+
+        async function apiFetch(url, options = {}) {
+            if (!options.headers) options.headers = {};
+            if (apiKey) options.headers['X-API-Key'] = apiKey;
+
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                localStorage.removeItem('wan2gp_api_key');
+                alert("Invalid API Key! Please reload the page to enter a new one.");
+            }
+            return res;
+        }
+
         // ── Config ──────────────────────────────────────────────────
         const API_BASE = `${window.location.protocol}//${window.location.host}`;
         let activeJobs = []; // jobs currently being tracked on the Generate tab
@@ -1099,7 +1122,7 @@
             formData.append('file', file);
 
             try {
-                const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+                const res = await apiFetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
                 if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
                 const data = await res.json();
 
@@ -1145,7 +1168,7 @@
             };
 
             try {
-                const res = await fetch(`${API_BASE}/generate`, {
+                const res = await apiFetch(`${API_BASE}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1216,7 +1239,7 @@
             for (let job of imgActiveJobs) {
                 if (job.status === 'completed' || job.status === 'failed') continue;
                 try {
-                    const res = await fetch(`${API_BASE}/status/${job.job_id}`);
+                    const res = await apiFetch(`${API_BASE}/status/${job.job_id}`);
                     const data = await res.json();
                     job.status = data.status; job.gpu_id = data.gpu_id;
                     job.model = data.model;
@@ -1233,8 +1256,8 @@
             try {
                 // Fetch both endpoints in parallel
                 const [healthRes, statusRes] = await Promise.all([
-                    fetch(`${API_BASE}/health`),
-                    fetch(`${API_BASE}/gpu_status`)
+                    apiFetch(`${API_BASE}/health`),
+                    apiFetch(`${API_BASE}/gpu_status`)
                 ]);
 
                 const healthData = await healthRes.json();
@@ -1306,7 +1329,7 @@
             };
 
             try {
-                const res = await fetch(`${API_BASE}/generate`, {
+                const res = await apiFetch(`${API_BASE}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1374,7 +1397,7 @@
             for (let job of activeJobs) {
                 if (job.status === 'completed' || job.status === 'failed') continue;
                 try {
-                    const res = await fetch(`${API_BASE}/status/${job.job_id}`);
+                    const res = await apiFetch(`${API_BASE}/status/${job.job_id}`);
                     const data = await res.json();
                     if (data.status !== job.status) changed = true;
                     job.status = data.status;
@@ -1472,7 +1495,7 @@
 
         async function retryJob(jobId) {
             try {
-                const res = await fetch(`${API_BASE}/retry/${jobId}`, { method: 'POST' });
+                const res = await apiFetch(`${API_BASE}/retry/${jobId}`, { method: 'POST' });
                 const data = await res.json();
                 // Update in active jobs
                 const job = activeJobs.find(j => j.job_id === jobId);
@@ -1491,7 +1514,7 @@
         // ── History ─────────────────────────────────────────────────
         async function loadHistory() {
             try {
-                const res = await fetch(`${API_BASE}/jobs/list?limit=500`);
+                const res = await apiFetch(`${API_BASE}/jobs/list?limit=500`);
                 const data = await res.json();
                 allJobs = data.jobs || [];
 
@@ -1545,7 +1568,7 @@
 
         async function retryJobFromHistory(jobId) {
             try {
-                await fetch(`${API_BASE}/retry/${jobId}`, { method: 'POST' });
+                await apiFetch(`${API_BASE}/retry/${jobId}`, { method: 'POST' });
                 showToast('🔄 Job retried');
                 loadHistory();
             } catch (e) {
@@ -1556,7 +1579,7 @@
         // ── Job Detail Modal ────────────────────────────────────────
         async function showJobDetail(jobId) {
             try {
-                const res = await fetch(`${API_BASE}/status/${jobId}`);
+                const res = await apiFetch(`${API_BASE}/status/${jobId}`);
                 const job = await res.json();
 
                 const modal = document.getElementById('job-modal');
@@ -1625,7 +1648,7 @@
         async function deleteJob(jobId) {
             if (!confirm('Delete this job record?')) return;
             try {
-                await fetch(`${API_BASE}/jobs/${jobId}`, { method: 'DELETE' });
+                await apiFetch(`${API_BASE}/jobs/${jobId}`, { method: 'DELETE' });
                 showToast('🗑️ Job deleted');
                 closeModal();
                 loadHistory();

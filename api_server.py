@@ -3,7 +3,7 @@ Wan2GP Video Generation API — Multi-GPU Edition.
 FastAPI server with built-in GPU scheduler for 3 GPU containers.
 Replaces Celery with a thread-based scheduler for direct GPU management.
 """
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Header, Depends
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -45,6 +45,13 @@ app.add_middleware(
 
 # Client for direct Docker operations (non-scheduled)
 client = Wan2GPClient()
+
+# Security Setup
+API_KEY = os.getenv("WAN2GP_API_KEY", "default-secret-key")
+
+def verify_api_key(x_api_key: str = Header(None, alias="X-API-Key")):
+    if not API_KEY or x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key")
 
 
 # ── Request/Response Models ─────────────────────────────────────────
@@ -94,7 +101,7 @@ class JobStatus(BaseModel):
 
 # ── API Endpoints ───────────────────────────────────────────────────
 
-@app.post("/generate", response_model=JobResponse)
+@app.post("/generate", response_model=JobResponse, dependencies=[Depends(verify_api_key)])
 def create_job(request: Request, req: GenerateRequest):
     """Submit a new video generation job."""
     job_id = f"job_{int(time.time())}_{os.urandom(4).hex()}"
@@ -153,7 +160,7 @@ def create_job(request: Request, req: GenerateRequest):
     )
 
 
-@app.get("/status/{job_id}", response_model=JobStatus)
+@app.get("/status/{job_id}", response_model=JobStatus, dependencies=[Depends(verify_api_key)])
 def get_status(job_id: str):
     """Get job status."""
     job = scheduler.get_job(job_id)
@@ -184,7 +191,7 @@ def get_status(job_id: str):
     )
 
 
-@app.get("/download/{job_id}")
+@app.get("/download/{job_id}", dependencies=[Depends(verify_api_key)])
 def download_video(job_id: str):
     """Download generated video."""
     job = scheduler.get_job(job_id)
@@ -228,7 +235,7 @@ def download_video(job_id: str):
     )
 
 
-@app.post("/retry/{job_id}")
+@app.post("/retry/{job_id}", dependencies=[Depends(verify_api_key)])
 def retry_job(job_id: str):
     """Retry a failed job."""
     job = scheduler.get_job(job_id)
@@ -275,7 +282,7 @@ def retry_job(job_id: str):
     }
 
 
-@app.get("/queue")
+@app.get("/queue", dependencies=[Depends(verify_api_key)])
 def queue_stats():
     """Get queue and GPU statistics."""
     stats = scheduler.get_queue_stats()
@@ -283,7 +290,7 @@ def queue_stats():
     return {**stats, "gpu_status": gpu_status}
 
 
-@app.get("/gpu_status")
+@app.get("/gpu_status", dependencies=[Depends(verify_api_key)])
 def gpu_status():
     """Get detailed GPU container status."""
     status = scheduler.get_gpu_status()
@@ -301,14 +308,14 @@ def gpu_status():
     }
 
 
-@app.get("/jobs/list")
+@app.get("/jobs/list", dependencies=[Depends(verify_api_key)])
 def list_jobs(limit: int = 50, status: Optional[str] = None):
     """List recent jobs."""
     jobs = scheduler.list_jobs(status=status, limit=limit)
     return {"jobs": jobs, "count": len(jobs)}
 
 
-@app.delete("/jobs/{job_id}")
+@app.delete("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
 def delete_job(job_id: str):
     """Delete a job record."""
     deleted = scheduler.delete_job(job_id)
@@ -317,7 +324,7 @@ def delete_job(job_id: str):
     return {"message": f"Job {job_id} deleted"}
 
 
-@app.post("/upload")
+@app.post("/upload", dependencies=[Depends(verify_api_key)])
 async def upload_media(file: UploadFile = File(...)):
     """
     Upload an image or audio file for use in image-to-video generation.
@@ -357,7 +364,7 @@ async def upload_media(file: UploadFile = File(...)):
     }
 
 
-@app.get("/loras")
+@app.get("/loras", dependencies=[Depends(verify_api_key)])
 def list_loras():
     """List available LoRA models from GPU 0 container."""
     try:
@@ -367,7 +374,7 @@ def list_loras():
         return {"loras": [], "error": str(e)}
 
 
-@app.get("/models")
+@app.get("/models", dependencies=[Depends(verify_api_key)])
 def list_models():
     """List all available model keys with labels and default settings."""
     from wan2gp_client import MODEL_TEMPLATES
@@ -383,7 +390,7 @@ def list_models():
     return {"models": models, "count": len(models)}
 
 
-@app.get("/health")
+@app.get("/health", dependencies=[Depends(verify_api_key)])
 def health_check():
     """Health check with GPU container status."""
     gpu_health = {}

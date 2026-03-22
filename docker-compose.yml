@@ -38,8 +38,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
-      - WAN2GP_OUTPUTS_DIR=/nvme0n1-disk/wan2gp_data/outputs
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTHONPATH=/workspace:$PYTHONPATH
       - WAN2GP_UPLOADS_DIR=/nvme0n1-disk/wan2gp_data/uploads
+      - WAN2GP_OUTPUTS_DIR=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_API_KEY=${WAN2GP_API_KEY:-default-secret-key}
     depends_on:
       redis:
         condition: service_healthy
