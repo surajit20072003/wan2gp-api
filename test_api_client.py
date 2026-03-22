@@ -7,7 +7,7 @@ import time
 import sys
 import os
 
-API_URL = "http://69.30.250.80:8000"
+API_URL = "http://69.197.145.4:8000"
 API_KEY = os.getenv("WAN2GP_API_KEY", "mypassword1234")
 HEADERS = {"X-API-Key": API_KEY}
 

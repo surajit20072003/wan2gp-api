@@ -217,12 +217,13 @@ info "Step 9: Health check kar rahe hain (30 second wait)..."
 sleep 30
 
 # API health check
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health 2>/dev/null || echo "000")
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "X-API-Key: default-secret-key" http://localhost:8000/health 2>/dev/null || echo "000")
 if [ "$HTTP_CODE" = "200" ]; then
     log "API healthy hai! http://localhost:8000"
 else
     warn "API abhi ready nahi hai (HTTP: $HTTP_CODE). Thodi der mein try karo:"
-    warn "  curl http://localhost:8000/health"
+    warn "    Bahar se port 8000 pe access test karein:"
+    warn "  curl -H \"X-API-Key: default-secret-key\" http://localhost:8000/health"
 fi
 
 # GPU container status check
@@ -272,8 +273,8 @@ echo "  Useful Commands:"
 echo "    docker ps                          # sab containers dekho"
 echo "    docker logs wan2gp-api -f          # API logs dekho"
 echo "    docker logs wan2gp-gpu0 -f         # GPU 0 logs dekho"
-echo "    curl http://localhost:8000/health  # API health check"
-echo "    curl http://localhost:8000/queue   # Queue status"
+echo "    curl -H \"X-API-Key: default-secret-key\" http://localhost:8000/health  # API health check"
+echo "    curl -H \"X-API-Key: default-secret-key\" http://localhost:8000/queue   # Queue status"
 echo ""
 echo "  ℹ️  Note: Pehli video generation mein models download honge"
 echo "     (~20-40GB), uske baad fast rahega."
