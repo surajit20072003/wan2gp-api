@@ -214,20 +214,29 @@ def download_video(job_id: str):
     # Search in the GPU's output directory
     gpu_id = int(job.get("gpu_id", 0))
     output_path = client.get_output_path(output_filename, gpu_id)
+    logger.info(f"🔍 Download lookup: job={job_id} file={output_filename} path={output_path} exists={output_path.exists()}")
 
     if not output_path.exists():
         # Fallback: search all GPU output dirs
+        found = False
         for gid in [0, 1, 2]:
             candidate = client.get_output_path(output_filename, gid)
+            logger.info(f"🔍 Fallback GPU {gid}: {candidate} exists={candidate.exists()}")
             if candidate.exists():
                 output_path = candidate
+                found = True
                 break
-        else:
+        if not found:
+            logger.error(
+                f"❌ Output file not found on any GPU dir: {output_filename}. "
+                f"WAN2GP_OUTPUTS_DIR={os.getenv('WAN2GP_OUTPUTS_DIR', 'NOT SET')}"
+            )
             raise HTTPException(
                 status_code=404,
-                detail=f"Output file not found: {output_filename}",
+                detail=f"Output file not found: {output_filename}. Check server logs for path details.",
             )
 
+    logger.info(f"✅ Serving download: {output_path}")
     return FileResponse(
         path=str(output_path),
         media_type="video/mp4",

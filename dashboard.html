@@ -1221,7 +1221,7 @@
                     html += `<div class="result-panel"><strong style="color:var(--green)">🎉 Video Ready!</strong>
                         <video controls autoplay muted loop><source src="${url}" type="video/mp4"></video>
                         <div class="result-actions">
-                            <a href="${url}" download="${job.job_id}.mp4" class="btn btn-sm btn-success">⬇️ Download</a>
+                            <button class="btn btn-sm btn-success" onclick="downloadJob('${job.job_id}')">⬇️ Download</button>
                             <button class="btn btn-sm btn-ghost" onclick="imgActiveJobs=imgActiveJobs.filter(j=>j.job_id!=='${job.job_id}');renderImgActiveJobs()">✕ Dismiss</button>
                         </div></div>`;
                 }
@@ -1463,7 +1463,7 @@
                                 <source src="${downloadUrl}" type="video/mp4">
                             </video>
                             <div class="result-actions">
-                                <a href="${downloadUrl}" download="${job.job_id}.mp4" class="btn btn-sm btn-success">⬇️ Download MP4</a>
+                                <button class="btn btn-sm btn-success" onclick="downloadJob('${job.job_id}')">⬇️ Download MP4</button>
                                 <button class="btn btn-sm btn-ghost" onclick="dismissJob('${job.job_id}')">✕ Dismiss</button>
                             </div>
                         </div>
@@ -1491,6 +1491,31 @@
         function dismissJob(jobId) {
             activeJobs = activeJobs.filter(j => j.job_id !== jobId);
             renderActiveJobs();
+        }
+
+        // ── Authenticated Download ───────────────────────────────────
+        // Plain <a href> anchors cannot send headers — use fetch+blob instead
+        // so the X-API-Key is always included.
+        async function downloadJob(jobId) {
+            showToast('⏳ Preparing download...');
+            try {
+                const res = await apiFetch(`${API_BASE}/download/${jobId}`);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${res.status}`);
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${jobId}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 3000);
+                showToast('✅ Download started!');
+            } catch (e) {
+                showToast(`❌ Download failed: ${e.message}`);
+            }
         }
 
         async function retryJob(jobId) {
@@ -1543,7 +1568,7 @@
                     const created = job.created_at ? new Date(parseFloat(job.created_at) * 1000).toLocaleString() : '—';
 
                     const actions = job.status === 'completed'
-                        ? `<a href="${API_BASE}/download/${job.job_id}" download class="btn btn-sm btn-success" onclick="event.stopPropagation()">⬇️</a>`
+                        ? `<button class="btn btn-sm btn-success" onclick="downloadJob('${job.job_id}'); event.stopPropagation()">⬇️</button>`
                         : job.status === 'failed' || job.status === 'error'
                             ? `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); retryJobFromHistory('${job.job_id}')">🔄</button>`
                             : '<span style="color:var(--text-dim)">—</span>';
@@ -1617,7 +1642,7 @@
                                 <source src="${API_BASE}/download/${job.job_id}" type="video/mp4">
                             </video>
                             <div style="margin-top:12px">
-                                <a href="${API_BASE}/download/${job.job_id}" download="${job.job_id}.mp4" class="btn btn-sm btn-success">⬇️ Download</a>
+                                <button class="btn btn-sm btn-success" onclick="downloadJob('${job.job_id}')">⬇️ Download</button>
                                 <button class="btn btn-sm btn-danger" onclick="deleteJob('${job.job_id}')" style="margin-left:8px">🗑️ Delete</button>
                             </div>
                         </div>
