@@ -28,8 +28,8 @@ services:
       - /nvme0n1-disk/wan2gp_data/gpu0/settings:/nvme0n1-disk/wan2gp_data/gpu0/settings
       - /nvme0n1-disk/wan2gp_data/gpu1/settings:/nvme0n1-disk/wan2gp_data/gpu1/settings
       - /nvme0n1-disk/wan2gp_data/gpu2/settings:/nvme0n1-disk/wan2gp_data/gpu2/settings
-      # Shared outputs (read-only for downloads)
-      - /nvme0n1-disk/wan2gp_data/outputs:/nvme0n1-disk/wan2gp_data/outputs:ro
+      # Shared outputs (read-write so files written by GPU containers are visible)
+      - /nvme0n1-disk/wan2gp_data/outputs:/nvme0n1-disk/wan2gp_data/outputs
       # Uploads staging dir
       - /nvme0n1-disk/wan2gp_data/uploads:/nvme0n1-disk/wan2gp_data/uploads
       # Docker socket for docker exec
@@ -60,15 +60,17 @@ services:
     build: .
     container_name: wan2gp-celery
     volumes:
-      - /nvme0n1-disk/test_wan2gp/outputs:/workspace/outputs:ro
-      - /nvme0n1-disk/test_wan2gp/settings:/workspace/settings
+      - /nvme0n1-disk/wan2gp_data/outputs:/nvme0n1-disk/wan2gp_data/outputs
+      - /nvme0n1-disk/wan2gp_data/gpu0/settings:/nvme0n1-disk/wan2gp_data/gpu0/settings
+      - /nvme0n1-disk/wan2gp_data/gpu1/settings:/nvme0n1-disk/wan2gp_data/gpu1/settings
+      - /nvme0n1-disk/wan2gp_data/gpu2/settings:/nvme0n1-disk/wan2gp_data/gpu2/settings
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
-      - WAN2GP_OUTPUTS_DIR=/workspace/outputs
-      - WAN2GP_SETTINGS_DIR=/workspace/settings
+      - WAN2GP_OUTPUTS_DIR=/nvme0n1-disk/wan2gp_data/outputs
+      - WAN2GP_SETTINGS_DIR=/nvme0n1-disk/wan2gp_data/gpu0/settings
     depends_on:
       redis:
         condition: service_healthy
